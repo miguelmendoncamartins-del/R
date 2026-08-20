@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de Aulas — Login</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root {
+    --bg: #0b0e12; --panel: #12161c; --panel2: #0e1116; --line: #262c34;
+    --green: #8fa6c9; --green-dim: #56637a; --blood-bright: #ff5b4d;
+    --yellow: #d4c86a; --ink: #dde3ea; --ink-dim: #7b8493;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0; height: 100vh;
+    background: var(--bg); color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-card {
+    width: 100%; max-width: 420px; background: var(--panel);
+    border: 2px solid var(--green-dim); padding: 24px;
+    box-shadow: 0 0 20px rgba(143, 166, 201, 0.15);
+  }
+  .login-card h1 {
+    font-family: 'VT323', monospace; font-size: 32px; color: var(--green);
+    margin: 0 0 4px; text-align: center; letter-spacing: 2px;
+  }
+  .login-card .subtitle {
+    font-size: 11px; color: var(--ink-dim); text-transform: uppercase;
+    text-align: center; margin-bottom: 24px; letter-spacing: 1px;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; font-size: 11px; color: var(--yellow);
+    text-transform: uppercase; margin-bottom: 6px; font-weight: bold;
+  }
+  .form-group input {
+    width: 100%; background: var(--panel2); border: 1px solid var(--line);
+    color: var(--ink); font-size: 13px; padding: 10px; outline: none;
+    font-family: inherit; transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--green); }
+  .btn-submit {
+    width: 100%; background: var(--green); color: #0b0e12; border: none;
+    font-weight: 800; font-size: 12px; text-transform: uppercase;
+    padding: 12px; cursor: pointer; margin-top: 8px; font-family: inherit;
+  }
+  .error-msg {
+    color: var(--blood-bright); font-size: 11px; margin-top: 12px;
+    text-align: center; display: none; font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <h1>Portal de Aulas</h1>
+  <div class="subtitle">Acesso ao portal</div>
+
+  <form id="loginForm" onsubmit="return handleLogin(event)">
+    <div class="form-group">
+      <label for="txtUser">Usuário / E-mail</label>
+      <input type="text" id="txtUser" placeholder="usuario@exemplo.com" required autofocus autocomplete="off">
+    </div>
+
+    <div class="form-group">
+      <label for="txtPass">Senha</label>
+      <input type="password" id="txtPass" placeholder="••••••••" required>
+    </div>
+
+    <button type="submit" class="btn-submit">Entrar</button>
+    <div class="error-msg" id="errMsg">Usuário ou senha incorretos!</div>
+  </form>
+</div>
+
+<script src="shared/users-db.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  sessionStorage.removeItem('githack_authenticated');
+  sessionStorage.removeItem('githack_current_user');
+});
+
+function handleLogin(e) {
+  e.preventDefault();
+  const uVal = document.getElementById('txtUser').value.trim().toLowerCase();
+  const pVal = document.getElementById('txtPass').value.trim();
+  const err = document.getElementById('errMsg');
+
+  const match = (window.USERS_DB || []).find(u => u.email.toLowerCase() === uVal && u.senha === pVal);
+
+  if (match) {
+    err.style.display = 'none';
+    sessionStorage.setItem('githack_authenticated', 'true');
+    sessionStorage.setItem('githack_current_user', JSON.stringify(match));
+
+    const qs = `user=${encodeURIComponent(match.email)}&ip=${encodeURIComponent(match.ip)}&saldo=${encodeURIComponent(match.saldo)}&role=${encodeURIComponent(match.role)}&turma=${encodeURIComponent(match.turma)}`;
+
+    // Cada turma tem sua própria tela; o professor cai num painel único.
+    const destino = (match.role === 'professor')
+      ? `professor/painel.html?${qs}`
+      : `turmas/${encodeURIComponent(match.turma)}/plataforma.html?${qs}`;
+
+    window.location.href = destino;
+  } else {
+    err.style.display = 'block';
+  }
+  return false;
+}
+</script>
+
+</body>
+</html>

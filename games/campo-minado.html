@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Campo Minado</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:'JetBrains Mono', monospace; height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050805;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(124,255,63,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; justify-content:center; }
+
+  h1{
+    font-family:'VT323', monospace; font-size:19px; color:var(--green);
+    margin:0 0 2px; letter-spacing:1px; text-shadow:0 0 8px rgba(124,255,63,.35);
+  }
+  .subtitle{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+
+  .board-panel{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; flex-shrink:0; min-height:0; }
+
+  .board{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(8, 32px);
+    grid-template-rows:repeat(8, 32px);
+    gap:2px;
+    background:var(--line);
+    border:2px solid var(--green-dim);
+    padding:2px;
+    flex-shrink:0;
+  }
+  .cell{
+    width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+    background:var(--panel2); color:var(--ink-dim); font-size:13px; font-weight:800;
+    border:1px solid #17201699;
+  }
+  .cell.goal-marker::after{ content:'🚩'; font-size:15px; }
+  .cell.revealed{ background:#060906; }
+  .cell.revealed.goal-marker::after{ content:''; }
+  .cell.mine-hit{ background:var(--blood); }
+  .cell.mine-hit::after{ content:'💥'; font-size:15px; }
+  .cell .num-1{ color:var(--green); }
+  .cell .num-2{ color:var(--green); }
+  .cell .num-3{ color:var(--yellow); }
+  .cell .num-4{ color:var(--yellow); }
+  .cell .num-5, .cell .num-6, .cell .num-7, .cell .num-8{ color:var(--blood-bright); }
+
+  .character{
+    position:absolute; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+    font-size:18px; transition:left 0.22s ease, top 0.22s ease; pointer-events:none;
+    filter:drop-shadow(0 0 4px rgba(124,255,63,0.6));
+  }
+
+  .level-up-banner{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
+    background:rgba(5,8,5,0.9); color:var(--green); font-family:'VT323', monospace; font-size:22px;
+    letter-spacing:1px; text-shadow:0 0 10px rgba(124,255,63,.6); padding:10px;
+    opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:5;
+  }
+  .level-up-banner.show{ opacity:1; }
+
+  .board-status{ font-size:11px; color:var(--ink-dim); text-align:center; flex-shrink:0; }
+  .board-status b{ color:var(--yellow); }
+
+  .btn-ranking{
+    font-family:inherit; font-weight:800; font-size:10.5px; letter-spacing:1px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--yellow); padding:4px 10px; cursor:pointer; border-radius:2px;
+  }
+  .btn-ranking:hover{ background:rgba(212,200,106,0.12); }
+
+  @keyframes mineShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-3px); } 75%{ transform:translateX(3px); } }
+  .board.mine-shake{ animation:mineShake .3s ease; }
+
+  .code-panel{ display:flex; flex-direction:column; gap:8px; width:320px; max-width:40%; height:100%; min-height:0; }
+  .code-header{
+    font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px;
+    background:var(--panel2); border:1px solid var(--line); padding:6px 10px; flex-shrink:0;
+  }
+  textarea#codeInput{
+    width:100%; flex:1; min-height:60px; resize:vertical; background:#000; color:var(--green);
+    border:1px solid var(--line); font-family:'JetBrains Mono', monospace; font-size:12px;
+    padding:10px; outline:none; line-height:1.5;
+  }
+  textarea#codeInput:focus{ border-color:var(--green); }
+
+  .code-actions{ display:flex; gap:8px; flex-shrink:0; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04220a; border:none; padding:9px 14px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .console{
+    background:#060806; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.ok{ color:var(--ink); }
+  .console .line.warn{ color:var(--yellow); }
+  .console .line.error{ color:var(--blood-bright); font-weight:bold; }
+  .console .line.success{ color:var(--green); font-weight:bold; }
+</style>
+<script src="../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../shared/clipboard-guard.js"></script>
+<script src="../shared/game-leaderboard.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>CAMPO MINADO — LÓGICA COM JAVASCRIPT</div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <button class="btn-ranking" id="btnRanking">🏆 Ranking da Turma</button>
+      <span>NÍVEL: <b id="lblLevel" style="color:var(--yellow)">1</b></span>
+      <span>RECORDE: <b id="lblBestLevel" style="color:var(--green)">0</b></span>
+      <span>TENTATIVAS: <span id="lblAttempts">0</span></span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="board-panel">
+        <div>
+          <h1>LEVE O ROBÔ ATÉ A BANDEIRA</h1>
+          <div class="subtitle">O campo é invisível — use perigo() para sentir as minas antes de andar</div>
+        </div>
+        <div class="board" id="board">
+          <div class="character" id="charEl">🤖</div>
+          <div class="level-up-banner" id="levelUpBanner"></div>
+        </div>
+        <div class="board-status" id="boardStatus">Posição: <b>(1,1)</b> — <b>0</b> movimentos</div>
+      </div>
+
+      <div class="code-panel">
+        <div class="code-header">editor.js — mover(dir) · perigo(dir) · posicao() · distanciaAteBandeira()</div>
+        <textarea id="codeInput" spellcheck="false">// Funções disponíveis:
+//   mover(dir)               anda uma casa: 'cima'|'baixo'|'esquerda'|'direita'
+//   perigo(dir)              true se NÃO dá pra ir por ali (mina ou fora do tabuleiro)
+//   posicao()                { linha, coluna } — posição atual (começa em 1,1)
+//   distanciaAteBandeira()   quantas casas faltam (linha + coluna) até 🚩
+
+// O campo é invisível: sinta antes de andar! Exemplo de como consultar
+// o sensor antes de decidir o movimento (isso sozinho não resolve o
+// nível — é só pra mostrar a sintaxe):
+if (!perigo('direita')) {
+  mover('direita');
+} else if (!perigo('baixo')) {
+  mover('baixo');
+}
+
+// Agora é com você: escreva a lógica pra guiar o robô até a 🚩 sentindo
+// o caminho com perigo() antes de cada mover().</textarea>
+        <div class="code-actions">
+          <button class="btn" id="btnRun">▶ Executar</button>
+          <button class="btn btn-secondary" id="btnRestart">↻ Reiniciar</button>
+        </div>
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ROWS = 8, COLS = 8;
+  const GOAL_ROW = ROWS - 1, GOAL_COL = COLS - 1;
+  const MOVE_DELAY = 260;
+  const SENSE_DELAY = 140;
+  // Um caminho de verdade no tabuleiro 8x8 tem no máximo ~14 passos — 80
+  // dá bastante folga pra um algoritmo que erra e recua algumas vezes,
+  // sem deixar a reprodução na tela (replay) durar minutos se o código
+  // do aluno ficar de um lado pro outro sem nunca "desistir" sozinho.
+  const MAX_MOVES = 80;
+  // Rede de segurança contra loop infinito (ex.: while(true) sem condição de
+  // parada) — conta toda chamada de mover()/perigo()/posicao()/
+  // distanciaAteBandeira(), não só movimentos de verdade, porque um loop
+  // pode ficar só sentindo o ambiente sem nunca mover.
+  const MAX_OPS = 600;
+  // Trava dura pro replay: mesmo que o log tenha muito mais entradas que
+  // isso (loop que só sente o ambiente gera muita entrada de sensor sem
+  // gastar movimento), a tela nunca fica animando por mais que isso —
+  // o restante do resultado é aplicado direto, sem atraso.
+  const MAX_REPLAY_ANIMATED = 70;
+  const LEVEL_UP_PAUSE = 1300;
+
+  // Sinal interno pra interromper a execução do código do aluno assim que o
+  // resultado da rodada já foi decidido (mina, bandeira ou limite excedido) —
+  // não é um erro de verdade, só um jeito de "desligar o robô" na hora certa.
+  class StopExec extends Error {}
+
+  // Dificuldade sobe com o nível (mais minas, caminho mais apertado),
+  // até um teto — senão fica praticamente impossível de gerar um caminho seguro.
+  function minesForLevel(lv) { return Math.min(8 + (lv - 1) * 2, 20); }
+
+  const DIRS = {
+    cima: [-1, 0],
+    baixo: [1, 0],
+    esquerda: [0, -1],
+    direita: [0, 1]
+  };
+
+  const boardEl = document.getElementById('board');
+  const charEl = document.getElementById('charEl');
+  const codeInput = document.getElementById('codeInput');
+  const btnRun = document.getElementById('btnRun');
+  const btnRestart = document.getElementById('btnRestart');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const boardStatus = document.getElementById('boardStatus');
+  const lblAttempts = document.getElementById('lblAttempts');
+  const lblLevel = document.getElementById('lblLevel');
+  const lblBestLevel = document.getElementById('lblBestLevel');
+  const levelUpBanner = document.getElementById('levelUpBanner');
+  const btnRanking = document.getElementById('btnRanking');
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const displayName = urlParams.get('name') || username;
+  const turma = urlParams.get('turma') || '';
+  const BEST_LEVEL_KEY = `campo_minado_best_level_${username}`;
+
+  function getBestLevel() { return parseInt(localStorage.getItem(BEST_LEVEL_KEY) || '0', 10); }
+  function saveBestLevel(v) { localStorage.setItem(BEST_LEVEL_KEY, String(v)); }
+  let bestLevel = getBestLevel();
+  lblBestLevel.textContent = bestLevel;
+
+  function openRanking() {
+    window.GameLeaderboard.showPanel({
+      game: 'campo_minado', turma, email: username,
+      title: 'Ranking — Campo Minado', formatScore: s => `Nível ${s}`
+    });
+  }
+  btnRanking.addEventListener('click', openRanking);
+  if (!window.GameLeaderboard.enabled) btnRanking.style.display = 'none';
+
+  let board = [];
+  let cellEls = [];
+  let pos = { row: 0, col: 0 };
+  let attempts = 0;
+  let level = 1;
+  let isRunning = false;
+
+  function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+  function randomInt(n) { return Math.floor(Math.random() * n); }
+
+  function buildEmptyBoard() {
+    const b = [];
+    for (let r = 0; r < ROWS; r++) {
+      const row = [];
+      for (let c = 0; c < COLS; c++) {
+        row.push({ mine: false, revealed: false, adjacent: 0 });
+      }
+      b.push(row);
+    }
+    return b;
+  }
+
+  function placeMines(b) {
+    let placed = 0;
+    const mineCount = minesForLevel(level);
+    while (placed < mineCount) {
+      const r = randomInt(ROWS);
+      const c = randomInt(COLS);
+      const isStart = (r === 0 && c === 0);
+      const isGoal = (r === GOAL_ROW && c === GOAL_COL);
+      if (isStart || isGoal || b[r][c].mine) continue;
+      b[r][c].mine = true;
+      placed++;
+    }
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (b[r][c].mine) continue;
+        let count = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && b[nr][nc].mine) count++;
+          }
+        }
+        b[r][c].adjacent = count;
+      }
+    }
+    return b;
+  }
+
+  function hasSafePath(b) {
+    const visited = Array.from({ length: ROWS }, () => new Array(COLS).fill(false));
+    const queue = [[0, 0]];
+    visited[0][0] = true;
+    while (queue.length) {
+      const [r, c] = queue.shift();
+      if (r === GOAL_ROW && c === GOAL_COL) return true;
+      for (const dir in DIRS) {
+        const [dr, dc] = DIRS[dir];
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+        if (visited[nr][nc] || b[nr][nc].mine) continue;
+        visited[nr][nc] = true;
+        queue.push([nr, nc]);
+      }
+    }
+    return false;
+  }
+
+  function generateBoard() {
+    let b, tries = 0;
+    do {
+      b = placeMines(buildEmptyBoard());
+      tries++;
+    } while (!hasSafePath(b) && tries < 200);
+    return b;
+  }
+
+  function buildBoardDom() {
+    boardEl.querySelectorAll('.cell').forEach(el => el.remove());
+    cellEls = [];
+    for (let r = 0; r < ROWS; r++) {
+      const rowEls = [];
+      for (let c = 0; c < COLS; c++) {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'cell';
+        if (r === GOAL_ROW && c === GOAL_COL) cellEl.classList.add('goal-marker');
+        boardEl.insertBefore(cellEl, charEl);
+        rowEls.push(cellEl);
+      }
+      cellEls.push(rowEls);
+    }
+  }
+
+  function renderCell(r, c) {
+    const data = board[r][c];
+    const el = cellEls[r][c];
+    el.classList.remove('mine-hit');
+    el.innerHTML = '';
+    if (!data.revealed) return;
+    el.classList.add('revealed');
+    if (data.mine) {
+      el.classList.add('mine-hit');
+    } else if (data.adjacent > 0) {
+      el.innerHTML = `<span class="num-${data.adjacent}">${data.adjacent}</span>`;
+    }
+  }
+
+  function moveCharacterTo(r, c, animate) {
+    charEl.style.transition = animate ? 'left 0.22s ease, top 0.22s ease' : 'none';
+    charEl.style.left = (c * 34) + 'px';
+    charEl.style.top = (r * 34) + 'px';
+  }
+
+  function updateStatus() {
+    boardStatus.innerHTML = `Posição: <b>(${pos.row + 1},${pos.col + 1})</b> — <b>${moveCountThisRun}</b> movimentos`;
+    lblAttempts.textContent = attempts;
+    lblLevel.textContent = level;
+  }
+
+  function showLevelUpFlash(clearedLevel) {
+    levelUpBanner.textContent = `🎉 NÍVEL ${clearedLevel} CONCLUÍDO!`;
+    levelUpBanner.classList.add('show');
+    setTimeout(() => levelUpBanner.classList.remove('show'), LEVEL_UP_PAUSE - 100);
+  }
+
+  function shakeBoard() {
+    boardEl.classList.remove('mine-shake');
+    void boardEl.offsetWidth; // força reflow pra animação poder rodar de novo em sequência
+    boardEl.classList.add('mine-shake');
+  }
+
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function clearConsole() {
+    consoleOutput.innerHTML = '';
+  }
+
+  let moveCountThisRun = 0;
+
+  function resetCharacterToStart() {
+    pos = { row: 0, col: 0 };
+    moveCountThisRun = 0;
+    moveCharacterTo(0, 0, false);
+    updateStatus();
+  }
+
+  // Espia o que tem na casa vizinha (sem mover pra lá) — usado tanto por
+  // mover() quanto por perigo(), contra a posição SIMULADA (simPos), não a
+  // posição visual (pos), porque o código do aluno roda inteiro e na hora
+  // (síncrono) antes de qualquer animação: a "sombra" da partida.
+  function peekFrom(simPos, dir) {
+    const d = DIRS[dir];
+    if (!d) return { valid: false };
+    const nr = simPos.row + d[0];
+    const nc = simPos.col + d[1];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return { valid: true, inBounds: false };
+    return { valid: true, inBounds: true, nr, nc, mine: board[nr][nc].mine };
+  }
+
+  // Roda o código do aluno inteiro, de uma vez, contra um tabuleiro-sombra
+  // (sem tocar a tela) — cada chamada de mover()/perigo() já responde na
+  // hora com o resultado real, então if/while do aluno reagem de verdade.
+  // O resultado vira um "log" de passos, e SÓ DEPOIS ele é reproduzido na
+  // tela com a mesma animação/atraso de sempre (replayLog abaixo) — a
+  // lógica roda instantânea, a encenação continua devagar.
+  function simulate(fn) {
+    let simPos = { row: 0, col: 0 };
+    let moveCount = 0;
+    let opsCount = 0;
+    let outcome = null; // null | 'goal' | 'mine' | 'exhausted' | 'loop'
+    const log = [];
+
+    function checkOps() {
+      opsCount++;
+      if (opsCount > MAX_OPS) { outcome = 'loop'; throw new StopExec('loop'); }
+    }
+
+    function mover(direcao) {
+      checkOps();
+      const dir = String(direcao).toLowerCase().trim();
+      if (outcome) { log.push({ type: 'move', dir, result: 'parado' }); return 'parado'; }
+      if (!DIRS[dir]) { log.push({ type: 'move', dir, result: 'invalido' }); return 'invalido'; }
+
+      moveCount++;
+      if (moveCount > MAX_MOVES) { outcome = 'exhausted'; throw new StopExec('exhausted'); }
+
+      const peek = peekFrom(simPos, dir);
+      if (!peek.inBounds) { log.push({ type: 'move', dir, result: 'parede' }); return 'parede'; }
+
+      simPos = { row: peek.nr, col: peek.nc };
+      if (peek.mine) {
+        log.push({ type: 'move', dir, result: 'mina' });
+        outcome = 'mine';
+        throw new StopExec('mine');
+      }
+      if (peek.nr === GOAL_ROW && peek.nc === GOAL_COL) {
+        log.push({ type: 'move', dir, result: 'chegou' });
+        outcome = 'goal';
+        throw new StopExec('goal');
+      }
+      log.push({ type: 'move', dir, result: 'seguro' });
+      return 'seguro';
+    }
+
+    // "Perigo" cobre tanto mina quanto sair do tabuleiro — pro aluno só
+    // precisar de UM sensor pra decidir "posso ir por aqui?", sem precisar
+    // também tratar parede como um caso especial separado.
+    function perigo(direcao) {
+      checkOps();
+      const dir = String(direcao).toLowerCase().trim();
+      const peek = peekFrom(simPos, dir);
+      const danger = !peek.valid || !peek.inBounds || peek.mine;
+      log.push({ type: 'sense', label: `perigo('${dir}') → ${danger ? 'sim ⚠️' : 'não'}` });
+      return danger;
+    }
+
+    function posicao() {
+      checkOps();
+      const p = { linha: simPos.row + 1, coluna: simPos.col + 1 };
+      log.push({ type: 'sense', label: `posicao() → (${p.linha},${p.coluna})` });
+      return p;
+    }
+
+    function distanciaAteBandeira() {
+      checkOps();
+      const d = Math.abs(GOAL_ROW - simPos.row) + Math.abs(GOAL_COL - simPos.col);
+      log.push({ type: 'sense', label: `distanciaAteBandeira() → ${d}` });
+      return d;
+    }
+
+    try {
+      fn(mover, perigo, posicao, distanciaAteBandeira);
+    } catch (err) {
+      if (!(err instanceof StopExec) && !outcome) throw err; // erro de verdade no código do aluno
+    }
+
+    return { log, outcome };
+  }
+
+  // Reproduz o log gerado por simulate() na tela, com a mesma animação e
+  // atraso de sempre — nada aqui decide mais nada, só encena o que já
+  // aconteceu na simulação síncrona.
+  async function replayLog(log, outcome) {
+    let stepNum = 0;
+    // Só os primeiros MAX_REPLAY_ANIMATED eventos são encenados com atraso —
+    // o resto é aplicado na hora, sem animar. Sem esse limite, um código
+    // que fica de um lado pro outro sem convencer (mas sem violar nenhum
+    // limite rápido o bastante) geraria um log gigante e travaria a tela
+    // animando por minutos antes de mostrar o resultado.
+    const animatedCount = Math.min(log.length, MAX_REPLAY_ANIMATED);
+    let warnedTruncation = false;
+
+    for (let i = 0; i < log.length; i++) {
+      const entry = log[i];
+      const animate = i < animatedCount;
+      if (!animate && !warnedTruncation) {
+        warnedTruncation = true;
+        logConsole(`⏩ Mais ${log.length - i} passos — aplicando direto, sem animar.`, 'info');
+      }
+
+      if (entry.type === 'sense') {
+        if (animate) { await sleep(SENSE_DELAY); logConsole(`🔎 ${entry.label}`, 'info'); }
+        continue;
+      }
+
+      if (animate) await sleep(MOVE_DELAY);
+      const { dir, result } = entry;
+      if (result === 'parado') continue;
+      stepNum++;
+
+      if (result === 'invalido') {
+        if (animate) logConsole(`[${stepNum}] mover('${dir}') → comando inválido. Use: cima, baixo, esquerda, direita.`, 'warn');
+        continue;
+      }
+      if (result === 'parede') {
+        if (animate) logConsole(`[${stepNum}] mover('${dir}') → bateu na parede.`, 'warn');
+        continue;
+      }
+
+      const d = DIRS[dir];
+      const nr = pos.row + d[0], nc = pos.col + d[1];
+      pos = { row: nr, col: nc };
+      moveCountThisRun++;
+      board[nr][nc].revealed = true;
+      renderCell(nr, nc);
+      moveCharacterTo(nr, nc, animate);
+      updateStatus();
+
+      if (result === 'mina') {
+        logConsole(`[${stepNum}] mover('${dir}') → 💥 Você pisou numa mina! Ajuste o código e tente de novo.`, 'error');
+        shakeBoard();
+        return;
+      }
+      if (result === 'chegou') {
+        logConsole(`[${stepNum}] mover('${dir}') → 🚩 Nível ${level} concluído em ${moveCountThisRun} movimentos!`, 'success');
+        await onLevelCleared();
+        return;
+      }
+      if (animate) logConsole(`[${stepNum}] mover('${dir}') → ok`, 'ok');
+    }
+
+    if (outcome === 'exhausted') {
+      logConsole(`Limite de ${MAX_MOVES} movimentos atingido sem chegar na bandeira.`, 'error');
+    } else if (outcome === 'loop') {
+      logConsole('O código entrou num loop sem chegar na bandeira (chamou mover()/perigo() demais). Revise a condição de parada.', 'error');
+    } else {
+      logConsole('Fim do código e a bandeira ainda não foi alcançada. Adicione mais lógica.', 'warn');
+    }
+  }
+
+  async function runCode() {
+    if (isRunning) return;
+    const code = codeInput.value;
+
+    let fn;
+    try {
+      fn = new Function('mover', 'perigo', 'posicao', 'distanciaAteBandeira', code);
+    } catch (err) {
+      clearConsole();
+      logConsole('Erro de sintaxe: ' + err.message, 'error');
+      return;
+    }
+
+    let sim;
+    try {
+      sim = simulate(fn);
+    } catch (err) {
+      clearConsole();
+      logConsole('Erro ao executar o código: ' + err.message, 'error');
+      return;
+    }
+
+    if (sim.log.length === 0) {
+      clearConsole();
+      logConsole('Nenhum comando executado — chame mover(...) pra guiar o robô.', 'warn');
+      return;
+    }
+
+    isRunning = true;
+    btnRun.disabled = true;
+    attempts++;
+    resetCharacterToStart();
+    clearConsole();
+    logConsole('Executando código...', 'info');
+
+    await replayLog(sim.log, sim.outcome);
+    isRunning = false;
+    btnRun.disabled = false;
+  }
+
+  async function onLevelCleared() {
+    window.GameLeaderboard.submitScore({ game: 'campo_minado', turma, email: username, name: displayName, score: level });
+    if (level > bestLevel) {
+      bestLevel = level;
+      saveBestLevel(bestLevel);
+      lblBestLevel.textContent = bestLevel;
+    }
+    showLevelUpFlash(level);
+    level++;
+    updateStatus();
+
+    await sleep(LEVEL_UP_PAUSE);
+    board = generateBoard();
+    buildBoardDom();
+    resetCharacterToStart();
+    board[0][0].revealed = true;
+    renderCell(0, 0);
+    logConsole(`Nível ${level} gerado — ${minesForLevel(level)} minas no campo. Boa sorte!`, 'info');
+  }
+
+  function restartGame() {
+    if (isRunning) return;
+    attempts = 0;
+    level = 1;
+    board = generateBoard();
+    buildBoardDom();
+    resetCharacterToStart();
+    board[0][0].revealed = true;
+    renderCell(0, 0);
+    clearConsole();
+    logConsole('Novo campo minado gerado. Boa sorte!', 'info');
+  }
+
+  btnRun.addEventListener('click', runCode);
+  btnRestart.addEventListener('click', restartGame);
+
+  restartGame();
+</script>
+
+<script>
+  window.ACTIVITY_LOCATION = 'jogos_campo_minado';
+  window.ACTIVITY_LABEL = 'Campo Minado — Lógica com JavaScript';
+</script>
+<script src="../shared/activity-tracker.js"></script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

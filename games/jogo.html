@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — GitHack OS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:'JetBrains Mono', monospace; height:100vh; overflow:hidden;
+  }
+
+  .desktop-environment{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050805;
+    display:flex; flex-direction:column; position:relative;
+    box-shadow:0 0 15px rgba(124,255,63,0.15);
+  }
+
+  .os-topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase;
+  }
+  .os-topbar .status-dot{ width:8px; height:8px; background:var(--blood-bright); border-radius:50%; display:inline-block; margin-right:6px;}
+  .os-topbar .status-dot.online{ background:var(--green); }
+
+  .desktop-area{
+    flex:1; padding:20px; display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-rows:repeat(auto-fill, minmax(100px, 1fr)); gap:20px; align-content:start;
+    position:relative; overflow:hidden;
+  }
+
+  .folder-icon{
+    width:90px; height:80px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; cursor:pointer; border:1px solid transparent; padding:6px;
+    border-radius:4px; transition:all 0.1s ease; position:relative;
+  }
+  .folder-icon:hover{ border-color:var(--green-dim); background:rgba(124,255,63,0.05); }
+  .folder-icon .img{ font-size:32px; margin-bottom:4px; }
+  .folder-icon .name{ font-size:11px; text-align:center; color:var(--ink); word-break:break-word; }
+  
+  .folder-icon.locked{ border-color:#555; opacity:0.45; filter:grayscale(100%); }
+  .folder-icon.locked .name{ color:#aaa !important; }
+  .folder-icon.locked::after{ content:'🔒'; position:absolute; top:2px; right:4px; font-size:14px; }
+
+  .folder-icon.ignored{ border-color:var(--yellow); opacity:0.85; }
+  .folder-icon.ignored::after{ content:'🙈'; position:absolute; top:2px; right:4px; font-size:12px; }
+
+  .terminal-section{
+    height:270px; background:#020402; border-top:2px solid var(--line);
+    display:flex; flex-direction:column; font-size:12px;
+  }
+  .terminal-header{
+    background:var(--panel); padding:4px 10px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px;
+  }
+  .terminal-body{
+    flex:1; padding:10px; overflow-y:auto; font-family:'JetBrains Mono', monospace;
+    color:var(--green); line-height:1.4; white-space: pre-wrap;
+  }
+  .terminal-input-line{ display:flex; padding:6px 10px; background:#000; border-top:1px solid #111; width:100%; align-items:center; }
+  .terminal-prompt{ color:var(--yellow); margin-right:8px; font-weight:bold; white-space:nowrap; }
+  .terminal-input{
+    flex:1; background:transparent; border:none; color:var(--ink);
+    font-family:inherit; font-size:12px; outline:none; width:100%;
+  }
+
+  .modal-overlay{
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.75); display:none; justify-content:center; align-items:center;
+    z-index:100;
+  }
+  .modal-window{
+    width:450px; background:var(--panel); border:1px solid var(--green);
+    box-shadow:0 0 20px rgba(0,0,0,0.8);
+  }
+  .modal-header{
+    background:var(--panel2); padding:8px 12px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .modal-header h3{ margin:0; font-size:12px; color:var(--yellow); text-transform:uppercase; }
+  .modal-close{
+    background:transparent; border:none; color:var(--blood-bright); font-weight:bold;
+    cursor:pointer; font-family:inherit; font-size:14px;
+  }
+  .modal-body{ padding:16px; font-size:12px; color:var(--ink); min-height:120px; word-break:break-all; }
+</style>
+<script src="../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../shared/clipboard-guard.js"></script>
+<script src="mock-data.js"></script>
+</head>
+<body>
+
+<div class="desktop-environment">
+  <div class="os-topbar">
+    <div><span class="status-dot" id="statusDot"></span>HOST: <span id="nodeName">LOCALHOST</span></div>
+    <div>SALDO: <b id="topSaldo" style="color:var(--yellow)">0.00 JDC</b> | REDE: <span id="netStatusLbl" style="color:var(--blood-bright)">DESCONECTADO</span> | IP: <b id="topIp" style="color:var(--yellow)">---.---.---.---</b></div>
+  </div>
+
+  <div class="desktop-area" id="desktopArea">
+    <div class="folder-icon" id="folder_fotos" onclick="clickFolder('fotos', 'Fotos Privadas')">
+      <div class="img">📁</div>
+      <div class="name">/fotos</div>
+    </div>
+
+    <div class="folder-icon" id="folder_whatsapp" onclick="clickFolder('whatsapp', 'WhatsApp Logs')">
+      <div class="img">💬</div>
+      <div class="name">/whatsapp</div>
+    </div>
+
+    <div class="folder-icon" id="folder_instagram" onclick="clickFolder('instagram', 'Instagram Directs')">
+      <div class="img">📸</div>
+      <div class="name">/instagram</div>
+    </div>
+
+    <div class="folder-icon" id="folder_tiktok" onclick="clickFolder('tiktok', 'TikTok Rascunhos')">
+      <div class="img">🎵</div>
+      <div class="name">/tiktok</div>
+    </div>
+
+    <div class="folder-icon" id="folder_jdcoin" onclick="clickFolder('jdcoin', 'Carteira JDCoin')">
+      <div class="img">💰</div>
+      <div class="name">/jdcoin</div>
+    </div>
+  </div>
+
+  <div class="terminal-section">
+    <div class="terminal-header">
+      <span>Terminal Bash Virtual — Git Shell <b id="shieldBadge" style="color:var(--green); display:none; margin-left:10px;">[🛡️ ANTIVÍRUS ATIVO: <span id="shieldTimerLbl">120</span>s]</b><b id="shieldCooldownBadge" style="color:var(--blood-bright); display:none; margin-left:10px;">[⏳ ANTIVÍRUS EM RECARGA: <span id="shieldCooldownTimerLbl">120</span>s]</b><b id="walletBadge" style="color:var(--yellow); display:none; margin-left:10px;">[🔐 CARTEIRA CRIPTOGRAFADA: <span id="walletTimerLbl">120</span>s]</b></span>
+      <span id="termNetStatus" style="color:var(--blood-bright)">STATUS: OFFLINE</span>
+    </div>
+    <div class="terminal-body" id="termOutput"></div>
+    
+    <form id="termForm" onsubmit="return handleTerminalSubmit(event)">
+      <div class="terminal-input-line">
+        <span class="terminal-prompt" id="termPrompt">...</span>
+        <input type="text" class="terminal-input" id="termInput" autofocus autocomplete="off">
+      </div>
+    </form>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 id="modalTitle">Pasta</h3>
+        <button class="modal-close" onclick="closeModal()">[X]</button>
+      </div>
+      <div class="modal-body" id="modalContent">
+        Conteúdo da pasta...
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Trava de Autenticação do Jogo
+  const isAuthenticated = sessionStorage.getItem('githack_authenticated');
+  const urlParams = new URLSearchParams(window.location.search);
+  const userParam = urlParams.get('user');
+  const ipParam = urlParams.get('ip');
+
+  if (!isAuthenticated || !userParam || !ipParam) {
+    window.location.href = '../index.html';
+  }
+
+  const SUPABASE_URL = window.SUPABASE_URL;
+  const SUPABASE_KEY = window.SUPABASE_ANON_KEY;
+  const sbClient = (window.supabase && SUPABASE_URL && SUPABASE_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+  window.username = userParam;
+  window.userIp = ipParam;
+  window.userSaldo = parseFloat(urlParams.get('saldo')) || 1234.80;
+  window.userRole = urlParams.get('role') || 'aluno';
+  window.userTurma = urlParams.get('turma') || 'jogos';
+  
+  let isConnected = false;
+  let activeTargetIp = null;
+  window.sessionIp = null;
+  let isShieldActive = false;
+  let canUseShield = true;
+  let shieldSecondsLeft = 120;
+  let shieldInterval = null;
+  let shieldCooldownSecondsLeft = 120;
+  let shieldCooldownInterval = null;
+  const gitignoreCooldowns = {};
+
+  let isWalletEncrypted = false;
+  let walletSecondsLeft = 120;
+  let walletInterval = null;
+
+  const defaultMock = {
+    "192.168.1.10": { email: "breno.silva80", jdcoin: 1234.80, lockedFolders: [], ignoredFolders: [], isShielded: false, isOnline: false },
+    "192.168.1.11": { email: "edward.guzman", jdcoin: 1580.11, lockedFolders: [], ignoredFolders: [], isShielded: false, isOnline: false },
+    "192.168.1.12": { email: "engel.fraga", jdcoin: 2100.12, lockedFolders: [], ignoredFolders: [], isShielded: false, isOnline: false }
+  };
+
+  // MOCK_NODES é conteúdo de exemplo só da turma Jogos; outras turmas começam
+  // sem nós de exemplo e dependem do Supabase (network_nodes) pra ver colegas.
+  const baseNodes = (window.userTurma === 'jogos')
+    ? ((typeof MOCK_NODES !== 'undefined') ? MOCK_NODES : defaultMock)
+    : {};
+
+  // Cache local isolado por turma: evita que um navegador que já visitou o
+  // portal de uma turma "vaze" nós dela pro portal de outra turma.
+  const NODES_CACHE_KEY = `githack_nodes_${window.userTurma}`;
+  window.gameNodes = JSON.parse(localStorage.getItem(NODES_CACHE_KEY)) || baseNodes;
+
+  if (!window.gameNodes[window.userIp]) {
+    window.gameNodes[window.userIp] = {
+      email: window.username,
+      jdcoin: window.userSaldo,
+      lockedFolders: [],
+      ignoredFolders: [],
+      isShielded: false,
+      isOnline: false,
+      currentIp: null,
+      folders: { fotos: [], whatsapp: [], instagram: [], tiktok: [], jdcoin: [{"name": "extrato_detalhado.pdf", "content": `[DOC] Saldo total acumulado: ${window.userSaldo.toFixed(2)} JDCoins.`}] }
+    };
+  } else {
+    window.gameNodes[window.userIp].email = window.username;
+  }
+
+  function saveState() {
+    localStorage.setItem(NODES_CACHE_KEY, JSON.stringify(window.gameNodes));
+    updateUI();
+  }
+
+  async function connectToNetwork() {
+    isConnected = true;
+    let assignedIp = window.userIp;
+
+    if (sbClient && window.userIp) {
+      try {
+        const { data, error } = await sbClient.rpc('assign_session_ip', { p_ip_address: window.userIp });
+        if (!error && data) {
+          assignedIp = data;
+        }
+      } catch (e) {
+        console.error('Falha ao sortear IP de sessão, usando IP fixo como fallback:', e);
+      }
+    }
+
+    window.sessionIp = assignedIp;
+    if (window.gameNodes[window.userIp]) {
+      window.gameNodes[window.userIp].isOnline = true;
+      window.gameNodes[window.userIp].currentIp = assignedIp;
+    }
+
+    if (sbClient) await fetchNodesFromSupabase();
+    return assignedIp;
+  }
+
+  async function disconnectFromNetwork() {
+    isConnected = false;
+    window.sessionIp = null;
+    if (window.gameNodes[window.userIp]) {
+      window.gameNodes[window.userIp].isOnline = false;
+      window.gameNodes[window.userIp].currentIp = null;
+    }
+
+    if (sbClient && window.userIp) {
+      try {
+        await sbClient.rpc('release_session_ip', { p_ip_address: window.userIp });
+      } catch (e) {
+        console.error('Falha ao liberar IP de sessão:', e);
+      }
+      await fetchNodesFromSupabase();
+    }
+  }
+
+  function resolveIdentityByCurrentIp(typedIp) {
+    if (!typedIp) return null;
+    const found = Object.keys(window.gameNodes).find(ip =>
+      window.gameNodes[ip].isOnline === true && window.gameNodes[ip].currentIp === typedIp
+    );
+    return found || null;
+  }
+
+  function displayIpFor(identityIp) {
+    const node = window.gameNodes[identityIp];
+    return (node && node.currentIp) ? node.currentIp : identityIp;
+  }
+
+  window.addEventListener('beforeunload', () => {
+    disconnectFromNetwork();
+  });
+
+  async function fetchNodesFromSupabase() {
+    if (!sbClient) return;
+
+    try {
+
+    // Só traz nós da própria turma: é isso que faz um aluno não enxergar
+    // (nem conseguir atacar) colegas de outra turma no netscan/git clone.
+    const { data: nodes } = await sbClient.from('network_nodes').select('*').eq('turma', window.userTurma);
+    if (nodes) {
+      nodes.forEach(n => {
+        if (!window.gameNodes[n.ip_address]) window.gameNodes[n.ip_address] = {};
+        window.gameNodes[n.ip_address].email = n.email;
+        window.gameNodes[n.ip_address].jdcoin = parseFloat(n.jdcoin_balance);
+        window.gameNodes[n.ip_address].isOnline = (n.is_online === true);
+        window.gameNodes[n.ip_address].currentIp = n.current_ip || null;
+        window.gameNodes[n.ip_address].folders = n.folders || {};
+      });
+    }
+
+    const { data: perms } = await sbClient.from('node_permissions').select('*');
+    if (perms) {
+      Object.keys(window.gameNodes).forEach(ip => {
+        window.gameNodes[ip].lockedFolders = [];
+        window.gameNodes[ip].ignoredFolders = [];
+      });
+      perms.forEach(p => {
+        if (window.gameNodes[p.ip_address]) {
+          if (p.is_locked) window.gameNodes[p.ip_address].lockedFolders.push(p.folder_name);
+          if (p.is_ignored) window.gameNodes[p.ip_address].ignoredFolders.push(p.folder_name);
+        }
+      });
+    }
+
+    const { data: shields } = await sbClient.from('node_shields').select('*');
+    if (shields) {
+      shields.forEach(s => {
+        if (window.gameNodes[s.ip_address]) {
+          window.gameNodes[s.ip_address].isShielded = (s.is_shielded === true);
+        }
+      });
+    }
+
+    updateUI();
+    } catch (e) {
+      console.error('Falha ao sincronizar dados da rede com o Supabase:', e);
+    }
+  }
+
+  function setupRealtimeListener() {
+    if (!sbClient) return;
+
+    sbClient.channel('realtime_nodes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'network_nodes' }, () => fetchNodesFromSupabase())
+      .subscribe();
+
+    sbClient.channel('realtime_permissions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'node_permissions' }, () => fetchNodesFromSupabase())
+      .subscribe();
+
+    sbClient.channel('realtime_shields')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'node_shields' }, () => fetchNodesFromSupabase())
+      .subscribe();
+  }
+
+  function updateUI() {
+    const myNode = window.gameNodes[window.userIp];
+    if (myNode) {
+      const elSaldo = document.getElementById('topSaldo');
+      if (elSaldo && typeof myNode.jdcoin === 'number') {
+        elSaldo.textContent = `${myNode.jdcoin.toFixed(2)} JDC`;
+      }
+
+      ['fotos', 'whatsapp', 'instagram', 'tiktok', 'jdcoin'].forEach(folder => {
+        const el = document.getElementById(`folder_${folder}`);
+        if (el) {
+          el.classList.remove('locked', 'ignored');
+          if (myNode.lockedFolders && myNode.lockedFolders.includes(folder)) {
+            el.classList.add('locked');
+          } else if (myNode.ignoredFolders && myNode.ignoredFolders.includes(folder)) {
+            el.classList.add('ignored');
+          }
+        }
+      });
+    }
+  }
+
+  window.clickFolder = async function(folderKey, title) {
+    if (sbClient) {
+      const { data } = await sbClient
+        .from('node_permissions')
+        .select('is_locked')
+        .eq('ip_address', window.userIp)
+        .eq('folder_name', folderKey)
+        .maybeSingle();
+
+      if (data && data.is_locked) {
+        openFolder('ACESSO NEGADO', `<span style="color:var(--blood-bright)">[SISTEMA COMPROMETIDO] Esta pasta foi criptografada por um ataque remoto! Você perdeu o acesso aos arquivos.</span>`);
+        return;
+      }
+    }
+
+    const myNode = window.gameNodes[window.userIp];
+    const files = (myNode && myNode.folders) ? (myNode.folders[folderKey] || []) : [];
+    let html = `<b>Diretório local: /${folderKey}</b><br><br>`;
+    
+    if (myNode && myNode.ignoredFolders && myNode.ignoredFolders.includes(folderKey)) {
+      html += `<span style="color:var(--yellow)">[GITIGNORE ATIVO] Oculto temporariamente no repositório.</span><br><br>`;
+    }
+    
+    if (files.length === 0) {
+      html += '<i>Nenhum arquivo encontrado.</i>';
+    } else {
+      files.forEach(f => {
+        html += `<div style="border-bottom:1px solid var(--line); padding:4px 0;">📄 <b>${f.name}</b><br><span style="color:var(--ink-dim)">${f.content}</span></div>`;
+      });
+    }
+    openFolder(title, html);
+  };
+
+  window.openFolder = function(title, content) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalContent').innerHTML = content;
+    document.getElementById('modalOverlay').style.display = 'flex';
+  };
+
+  window.closeModal = function() {
+    document.getElementById('modalOverlay').style.display = 'none';
+  };
+
+  window.handleTerminalSubmit = async function(e) {
+    if (e) e.preventDefault();
+    const termInput = document.getElementById('termInput');
+    const termOutput = document.getElementById('termOutput');
+    const cmd = termInput.value.trim();
+    termInput.value = '';
+
+    if (!cmd) return false;
+
+    const line = document.createElement('div');
+    line.innerHTML = `<span style="color:var(--yellow)">${window.username}@githack:~$</span> ${cmd}`;
+    termOutput.appendChild(line);
+
+    const response = document.createElement('div');
+    const parts = cmd.split(' ');
+    const mainCmd = parts[0].toLowerCase();
+    const subCmd = parts[1] ? parts[1].toLowerCase().replace('/', '') : '';
+
+    if (mainCmd === 'ip') {
+      if (subCmd === 'connect') {
+        const assignedIp = await connectToNetwork();
+        document.getElementById('statusDot').classList.add('online');
+        document.getElementById('topIp').textContent = assignedIp;
+        document.getElementById('netStatusLbl').textContent = 'ONLINE';
+        document.getElementById('netStatusLbl').style.color = 'var(--green)';
+        document.getElementById('termNetStatus').textContent = 'REDE: CONECTADO [192.168.1.0/24]';
+        document.getElementById('termNetStatus').style.color = 'var(--green)';
+
+        response.innerHTML = `Conectado à interface ${assignedIp}. Status de rede: ONLINE.`;
+      } else if (subCmd === 'disconnect') {
+        await disconnectFromNetwork();
+        activeTargetIp = null;
+        document.getElementById('statusDot').classList.remove('online');
+        document.getElementById('topIp').textContent = '---.---.---.---';
+        document.getElementById('netStatusLbl').textContent = 'DESCONECTADO';
+        document.getElementById('netStatusLbl').style.color = 'var(--blood-bright)';
+        document.getElementById('termNetStatus').textContent = 'STATUS: OFFLINE';
+        document.getElementById('termNetStatus').style.color = 'var(--blood-bright)';
+        response.innerHTML = `Conexão encerrada. Status de rede: OFFLINE.`;
+      } else {
+        response.style.color = 'var(--blood-bright)';
+        response.textContent = 'Sintaxe incorreta. Exemplo: ip connect';
+      }
+    } else {
+      switch(mainCmd) {
+        case 'help':
+          let helpText = `
+            <table style="width:100%; border-collapse:collapse; font-size:11px;">
+              <tr style="color:var(--yellow); text-align:left;">
+                <th style="padding:2px 4px;">COMANDO</th>
+                <th style="padding:2px 4px;">DESCRIÇÃO</th>
+                <th style="padding:2px 4px;">EXEMPLO DE USO</th>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>ls [pasta]</b></td>
+                <td style="padding:2px 4px">Lista o conteúdo da raiz ou de uma pasta.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">ls /whatsapp</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>gitignore [pasta]</b></td>
+                <td style="padding:2px 4px">Oculta uma pasta por 1m30s (Cooldown: 2m).</td>
+                <td style="padding:2px 4px; color:var(--yellow)">gitignore jdcoin</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>ip connect / ip disconnect</b></td>
+                <td style="padding:2px 4px">Gerencia a conexão com a subnet local.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">ip connect</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>netscan</b></td>
+                <td style="padding:2px 4px">Escaneia e lista os IPs ativos na subnet.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">netscan</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>antivirus</b></td>
+                <td style="padding:2px 4px">Blinda o IP por 2m ocultando 2 dígitos (Cooldown: 2m).</td>
+                <td style="padding:2px 4px; color:var(--yellow)">antivirus</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>encrypt jdcoin [senha]</b></td>
+                <td style="padding:2px 4px">Protege sua carteira por 2m com senha de 1 caractere (letra ou número, sem símbolos).</td>
+                <td style="padding:2px 4px; color:var(--yellow)">encrypt jdcoin K</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>git clone [IP]</b></td>
+                <td style="padding:2px 4px">Clona o repositório público do IP alvo informado.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">git clone 192.168.1.11</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>git log</b></td>
+                <td style="padding:2px 4px">Exibe o histórico de commits do nó clonado.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">git log</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>hack transfer [IP]</b></td>
+                <td style="padding:2px 4px">Drena 50% do saldo de JDCoin do alvo clonado.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">hack transfer 192.168.1.11</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>hack lock [IP] [pasta]</b></td>
+                <td style="padding:2px 4px">Criptografa e bloqueia uma pasta do nó clonado.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">hack lock 192.168.1.11 whatsapp</td>
+              </tr>
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>hack crack [IP]</b></td>
+                <td style="padding:2px 4px">Tenta 10 combinações por força bruta para quebrar a senha da carteira do nó clonado.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">hack crack 192.168.1.11</td>
+              </tr>`;
+
+          if (window.userRole === 'professor' || window.userRole === 'admin') {
+            helpText += `
+              <tr style="color:var(--yellow)">
+                <td style="padding:2px 4px; color:var(--yellow)"><b>admin reset [IP]</b></td>
+                <td style="padding:2px 4px">Restaura todas as pastas do aluno.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">admin reset 192.168.1.10</td>
+              </tr>
+              <tr style="color:var(--yellow)">
+                <td style="padding:2px 4px; color:var(--yellow)"><b>admin setbalance [IP] [VALOR]</b></td>
+                <td style="padding:2px 4px">Redefine o saldo de JDCoin do aluno.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">admin setbalance 192.168.1.10 5000</td>
+              </tr>`;
+          }
+
+          helpText += `
+              <tr>
+                <td style="padding:2px 4px; color:var(--green)"><b>clear</b></td>
+                <td style="padding:2px 4px">Limpa o histórico do terminal.</td>
+                <td style="padding:2px 4px; color:var(--yellow)">clear</td>
+              </tr>
+            </table>`;
+          response.innerHTML = helpText;
+          break;
+
+        case 'admin':
+          if (window.userRole !== 'professor' && window.userRole !== 'admin') {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = 'Acesso Negado: Requer privilégios de Professor/Admin.';
+          } else {
+            const adminAction = parts[1] ? parts[1].toLowerCase() : '';
+            const targetAdminIp = parts[2];
+
+            if (adminAction === 'reset') {
+              if (!targetAdminIp) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Erro: Informe o IP do aluno. Ex: admin reset 192.168.1.10';
+              } else {
+                if (sbClient) {
+                  await sbClient.from('node_permissions').delete().eq('ip_address', targetAdminIp);
+                }
+                response.innerHTML = `<span style="color:var(--green)">[ADMIN] Todas as pastas do nó ${targetAdminIp} foram restauradas e desbloqueadas.</span>`;
+              }
+            } else if (adminAction === 'setbalance') {
+              const newBalance = parseFloat(parts[3]);
+              if (!targetAdminIp || isNaN(newBalance)) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Sintaxe: admin setbalance [IP] [NOVO_SALDO]';
+              } else {
+                if (sbClient) {
+                  await sbClient.from('network_nodes').update({ jdcoin_balance: newBalance }).eq('ip_address', targetAdminIp);
+                }
+                response.innerHTML = `<span style="color:var(--green)">[ADMIN] Saldo do nó ${targetAdminIp} redefinido para ${newBalance.toFixed(2)} JDC.</span>`;
+              }
+            } else {
+              response.style.color = 'var(--yellow)';
+              response.textContent = 'Comandos Admin: admin reset [IP] | admin setbalance [IP] [VALOR]';
+            }
+          }
+          break;
+
+        case 'ls':
+          const targetNodeIp = activeTargetIp || window.userIp;
+          const currentNode = window.gameNodes[targetNodeIp];
+
+          if (!currentNode) {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = 'Erro ao ler nó da rede.';
+            break;
+          }
+
+          let walletLocked = false;
+          if (targetNodeIp !== window.userIp && sbClient) {
+            const { data: walletStatus } = await sbClient.rpc('wallet_lock_status', { p_ip_address: targetNodeIp });
+            walletLocked = !!(walletStatus && walletStatus.locked);
+          }
+
+          if (!subCmd) {
+            let lsOutput = `<span style="color:var(--yellow)">Conteúdo do Nó [${displayIpFor(targetNodeIp)}]:</span><br>`;
+            ['fotos', 'whatsapp', 'instagram', 'tiktok', 'jdcoin'].forEach(f => {
+              const isLocked = currentNode.lockedFolders && currentNode.lockedFolders.includes(f);
+              const isIgnored = currentNode.ignoredFolders && currentNode.ignoredFolders.includes(f);
+              if (f === 'jdcoin' && walletLocked) {
+                lsOutput += `📁 /${f} <span style="color:var(--yellow)">[🔐 CRIPTOGRAFADO POR SENHA]</span><br>`;
+              } else if (isLocked) {
+                lsOutput += `📁 /${f} <span style="color:var(--blood-bright)">[CRIPTOGRAFADO/BLOQUEADO]</span><br>`;
+              } else if (isIgnored) {
+                lsOutput += `📁 /${f} <span style="color:var(--yellow)">[.GITIGNORE ATIVO]</span><br>`;
+              } else {
+                lsOutput += `📁 /${f}<br>`;
+              }
+            });
+            response.innerHTML = lsOutput;
+          } else {
+            if (!['fotos', 'whatsapp', 'instagram', 'tiktok', 'jdcoin'].includes(subCmd)) {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = `Diretório '/${subCmd}' não encontrado. Opções: fotos, whatsapp, instagram, tiktok, jdcoin`;
+            } else if (subCmd === 'jdcoin' && walletLocked) {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = `Acesso Negado: A carteira /jdcoin está criptografada por senha. Use 'hack crack ${displayIpFor(targetNodeIp)}' para tentar quebrá-la.`;
+            } else if (currentNode.lockedFolders && currentNode.lockedFolders.includes(subCmd)) {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = `Acesso Negado: A pasta /${subCmd} foi sequestrada e criptografada!`;
+            } else if (currentNode.ignoredFolders && currentNode.ignoredFolders.includes(subCmd)) {
+              response.style.color = 'var(--yellow)';
+              response.textContent = `Aviso: A pasta /${subCmd} está no .gitignore e oculta no repositório.`;
+            } else {
+              const fileList = (currentNode.folders && currentNode.folders[subCmd]) ? currentNode.folders[subCmd] : [];
+              if (fileList.length === 0) {
+                response.innerHTML = `<i>Diretório /${subCmd} está vazio.</i>`;
+              } else {
+                let filesOutput = `<span style="color:var(--yellow)">Arquivos em /${subCmd}:</span><br>`;
+                fileList.forEach(file => {
+                  filesOutput += `📄 <b>${file.name}</b> — <span style="color:var(--ink-dim)">${file.content}</span><br>`;
+                });
+                response.innerHTML = filesOutput;
+              }
+            }
+          }
+          break;
+
+        case 'netscan':
+          if (!isConnected) {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = "Erro: Interface de rede desconectada. Execute 'ip connect' para conectar à subnet local.";
+          } else {
+            await fetchNodesFromSupabase();
+            
+            const subnetPrefix = window.userIp.split('.').slice(0, 3).join('.');
+            let tableHtml = `<br><span style="color:var(--yellow)">--- SUBNET LOCAL (${subnetPrefix}.0/24) ---</span><br>`;
+            tableHtml += `IP TARGET       | STATUS  | REPOSITÓRIO GIT<br>`;
+            tableHtml += `----------------|---------|------------------------<br>`;
+
+            Object.keys(window.gameNodes).forEach(ip => {
+              if (ip !== window.userIp) {
+                const node = window.gameNodes[ip];
+                const isOnline = node.isOnline === true;
+                let displayIp = isOnline ? (node.currentIp || ip) : '---.---.---.---';
+
+                if (isOnline && node.isShielded === true) {
+                  const ipParts = displayIp.split('.');
+                  displayIp = `${ipParts[0]}.${ipParts[1]}.${ipParts[2]}.XX`;
+                }
+
+                if (isOnline) {
+                  tableHtml += `<span style="color:var(--green)">${displayIp.padEnd(15)} | ONLINE  | git://${displayIp}/main.git</span><br>`;
+                } else {
+                  tableHtml += `<span style="color:var(--ink-dim)">${displayIp.padEnd(15)} | OFFLINE | git://${displayIp}/main.git</span><br>`;
+                }
+              }
+            });
+
+            response.innerHTML = tableHtml;
+          }
+          break;
+
+        case 'antivirus':
+          if (!canUseShield) {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = `Antivírus em recarga (Cooldown ativo). Faltam ${shieldCooldownSecondsLeft}s para acionar novamente.`;
+          } else if (isShieldActive) {
+            response.style.color = 'var(--yellow)';
+            response.textContent = 'Antivírus já está em execução no seu nó.';
+          } else {
+            isShieldActive = true;
+            canUseShield = false;
+            window.gameNodes[window.userIp].isShielded = true;
+            
+            if (sbClient) {
+              await sbClient.from('node_shields').upsert({
+                ip_address: window.userIp,
+                is_shielded: true,
+                expires_at: new Date(Date.now() + 120000).toISOString()
+              }, { onConflict: 'ip_address' });
+            }
+
+            shieldSecondsLeft = 120;
+            document.getElementById('shieldBadge').style.display = 'inline';
+
+            shieldInterval = setInterval(async () => {
+              shieldSecondsLeft--;
+              document.getElementById('shieldTimerLbl').textContent = shieldSecondsLeft;
+
+              if (shieldSecondsLeft <= 0) {
+                clearInterval(shieldInterval);
+                isShieldActive = false;
+                window.gameNodes[window.userIp].isShielded = false;
+                
+                if (sbClient) {
+                  await sbClient.from('node_shields').upsert({
+                    ip_address: window.userIp,
+                    is_shielded: false
+                  }, { onConflict: 'ip_address' });
+                }
+
+                document.getElementById('shieldBadge').style.display = 'none';
+
+                const alertDiv = document.createElement('div');
+                alertDiv.style.color = 'var(--blood-bright)';
+                alertDiv.textContent = '[ANTIVÍRUS EXPIRADO] A blindagem do nó caiu! Iniciando cooldown de 2 minutos.';
+                termOutput.appendChild(alertDiv);
+                termOutput.scrollTop = termOutput.scrollHeight;
+
+                shieldCooldownSecondsLeft = 120;
+                document.getElementById('shieldCooldownBadge').style.display = 'inline';
+                document.getElementById('shieldCooldownTimerLbl').textContent = shieldCooldownSecondsLeft;
+
+                shieldCooldownInterval = setInterval(() => {
+                  shieldCooldownSecondsLeft--;
+                  const lbl = document.getElementById('shieldCooldownTimerLbl');
+                  if (lbl) lbl.textContent = shieldCooldownSecondsLeft;
+
+                  if (shieldCooldownSecondsLeft <= 0) {
+                    clearInterval(shieldCooldownInterval);
+                    canUseShield = true;
+                    document.getElementById('shieldCooldownBadge').style.display = 'none';
+
+                    const readyDiv = document.createElement('div');
+                    readyDiv.style.color = 'var(--green)';
+                    readyDiv.textContent = '[ANTIVÍRUS PRONTO] O sistema de blindagem pode ser ativado novamente.';
+                    termOutput.appendChild(readyDiv);
+                    termOutput.scrollTop = termOutput.scrollHeight;
+                  }
+                }, 1000);
+              }
+            }, 1000);
+
+            response.innerHTML = `<span style="color:var(--green)">[ANTIVÍRUS ATIVADO] Nó blindado por 2 minutos. Os 2 últimos dígitos do seu IP foram ocultados na rede como .XX.</span>`;
+          }
+          break;
+
+        case 'encrypt':
+          if (subCmd !== 'jdcoin') {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = 'Sintaxe: encrypt jdcoin [senha]. Ex: encrypt jdcoin K';
+          } else {
+            const walletPassword = parts[2];
+            if (!walletPassword || !/^[A-Za-z0-9]$/.test(walletPassword)) {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = 'Senha inválida: use exatamente 1 caractere, letra (a-z/A-Z) ou número (0-9), sem símbolos.';
+            } else if (!sbClient) {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = 'Erro: Supabase não conectado.';
+            } else if (isWalletEncrypted) {
+              response.style.color = 'var(--yellow)';
+              response.textContent = 'Sua carteira já está criptografada.';
+            } else {
+              const { data, error } = await sbClient.rpc('set_wallet_password', {
+                p_ip_address: window.userIp,
+                p_password: walletPassword
+              });
+
+              if (error || !data || !data.success) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = (data && data.message) ? data.message : 'Falha ao criptografar a carteira.';
+              } else {
+                isWalletEncrypted = true;
+                walletSecondsLeft = 120;
+                document.getElementById('walletBadge').style.display = 'inline';
+                document.getElementById('walletTimerLbl').textContent = walletSecondsLeft;
+
+                walletInterval = setInterval(() => {
+                  walletSecondsLeft--;
+                  const lbl = document.getElementById('walletTimerLbl');
+                  if (lbl) lbl.textContent = walletSecondsLeft;
+
+                  if (walletSecondsLeft <= 0) {
+                    clearInterval(walletInterval);
+                    isWalletEncrypted = false;
+                    document.getElementById('walletBadge').style.display = 'none';
+
+                    const expDiv = document.createElement('div');
+                    expDiv.style.color = 'var(--yellow)';
+                    expDiv.textContent = '[CRIPTOGRAFIA EXPIRADA] A senha da carteira JDCoin não é mais válida.';
+                    termOutput.appendChild(expDiv);
+                    termOutput.scrollTop = termOutput.scrollHeight;
+                  }
+                }, 1000);
+
+                response.innerHTML = `<span style="color:var(--green)">[CARTEIRA CRIPTOGRAFADA] Senha "${walletPassword}" definida. Proteção ativa por 2 minutos.</span>`;
+              }
+            }
+          }
+          break;
+
+        case 'gitignore':
+          const targetFolder = parts[1] ? parts[1].toLowerCase().replace('/', '') : '';
+          if (!['fotos', 'whatsapp', 'instagram', 'tiktok', 'jdcoin'].includes(targetFolder)) {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = 'Erro: Pasta inválida. Opções: fotos, whatsapp, instagram, tiktok, jdcoin';
+          } else if (gitignoreCooldowns[targetFolder]) {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = `A pasta /${targetFolder} está em tempo de recarga (cooldown). Aguarde para usar gitignore novamente.`;
+          } else {
+            if (sbClient) {
+              await sbClient.from('node_permissions').upsert({
+                ip_address: window.userIp,
+                folder_name: targetFolder,
+                is_ignored: true
+              }, { onConflict: 'ip_address,folder_name' });
+            }
+
+            response.innerHTML = `<span style="color:var(--green)">[GITIGNORE ATIVADO] A pasta /${targetFolder} está oculta na rede por 1min 30s.</span>`;
+
+            setTimeout(async () => {
+              if (sbClient) {
+                await sbClient.from('node_permissions').upsert({
+                  ip_address: window.userIp,
+                  folder_name: targetFolder,
+                  is_ignored: false
+                }, { onConflict: 'ip_address,folder_name' });
+              }
+
+              const expDiv = document.createElement('div');
+              expDiv.style.color = 'var(--yellow)';
+              expDiv.textContent = `[GITIGNORE EXPIRADO] A pasta /${targetFolder} voltou a ficar visível na rede. Cooldown de 2 min ativado.`;
+              termOutput.appendChild(expDiv);
+              termOutput.scrollTop = termOutput.scrollHeight;
+
+              gitignoreCooldowns[targetFolder] = true;
+              setTimeout(() => {
+                delete gitignoreCooldowns[targetFolder];
+                const readyDiv = document.createElement('div');
+                readyDiv.style.color = 'var(--green)';
+                readyDiv.textContent = `[GITIGNORE PRONTO] A pasta /${targetFolder} já pode ser ignorada novamente.`;
+                termOutput.appendChild(readyDiv);
+                termOutput.scrollTop = termOutput.scrollHeight;
+              }, 120000);
+
+            }, 90000);
+          }
+          break;
+
+        case 'git':
+          if (!isConnected) {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = "Erro: Conecte à rede ('ip connect') antes de usar o Git.";
+          } else {
+            const gitSub = parts[1] ? parts[1].toLowerCase() : '';
+            if (gitSub === 'clone') {
+              const typedIp = parts[2];
+              const targetIp = resolveIdentityByCurrentIp(typedIp);
+
+              if (!typedIp) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Erro: Informe o IP alvo. Exemplo: git clone 192.168.1.11';
+              } else if (typedIp.endsWith('.XX')) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Acesso Negado: Endereço IP blindado por Antivírus. Impossível localizar o host.';
+              } else if (!targetIp) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Erro: IP de alvo inválido ou não encontrado na rede. Faça um netscan para ver os endereços ativos.';
+              } else if (window.gameNodes[targetIp].isOnline !== true) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Erro: Host offline. IP inalcançável na rede.';
+              } else if (window.gameNodes[targetIp].isShielded === true && window.userRole !== 'professor' && window.userRole !== 'admin') {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Acesso Negado: O nó de destino está sob proteção de Antivírus Ativo.';
+              } else if (activeTargetIp && activeTargetIp !== targetIp) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = `Atenção: Apenas um nó por vez. Ativo no momento: ${displayIpFor(activeTargetIp)}.`;
+              } else {
+                activeTargetIp = targetIp;
+                response.innerHTML = `<span style="color:var(--yellow)">[SESSÃO ATIVA] Repositório do nó ${typedIp} clonado com sucesso.</span>`;
+              }
+            } else if (gitSub === 'log') {
+              if (!activeTargetIp) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Erro: Nenhum nó clonado na sessão atual.';
+              } else {
+                const targetNode = window.gameNodes[activeTargetIp];
+                const ignored = targetNode.ignoredFolders || [];
+
+                let logDetails = `
+                  <span style="color:var(--yellow)">--- LOGS DE COMMITS DE ${displayIpFor(activeTargetIp)} ---</span><br>
+                  commit 8a2f1c (HEAD -> main)<br>
+                  Autor: ${targetNode.email}<br>
+                `;
+
+                if (!ignored.includes('jdcoin')) logDetails += `&nbsp;&nbsp;&nbsp;&nbsp;fix: vazamento de chaves em /jdcoin<br>`;
+                if (!ignored.includes('whatsapp')) logDetails += `&nbsp;&nbsp;&nbsp;&nbsp;feat: backup de conversas em /whatsapp<br>`;
+                if (ignored.includes('jdcoin') && ignored.includes('whatsapp')) logDetails += `&nbsp;&nbsp;&nbsp;&nbsp;docs: atualizado README.md (.gitignore ativo)<br>`;
+
+                response.innerHTML = logDetails;
+              }
+            } else {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = 'Subcomando Git inválido. Consulte o help.';
+            }
+          }
+          break;
+
+        case 'hack':
+          if (!activeTargetIp) {
+            response.style.color = 'var(--blood-bright)';
+            response.textContent = 'Erro: Requer git clone [IP] em um nó ativo antes de atacar.';
+          } else {
+            const hackAction = parts[1] ? parts[1].toLowerCase() : '';
+            const typedIp = parts[2];
+            const targetIp = resolveIdentityByCurrentIp(typedIp);
+
+            if (!targetIp || targetIp !== activeTargetIp) {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = `Erro: O IP informado não bate com a sessão ativa. Se o endereço mudou, refaça o netscan e o git clone.`;
+            } else if (window.gameNodes[targetIp] && window.gameNodes[targetIp].isOnline !== true) {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = 'Falha no ataque: Host ficou offline durante a sessão.';
+            } else if (window.gameNodes[targetIp] && window.gameNodes[targetIp].isShielded === true && window.userRole !== 'professor' && window.userRole !== 'admin') {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = 'Falha no ataque: O nó de destino ativou o Antivírus.';
+            } else if (hackAction === 'transfer') {
+              if (!sbClient) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Erro: Supabase não conectado.';
+              } else {
+                const { data, error } = await sbClient.rpc('execute_hack_transfer', {
+                  attacker_ip: window.userIp,
+                  target_ip: targetIp
+                });
+
+                if (error || !data || !data.success) {
+                  response.style.color = 'var(--blood-bright)';
+                  response.textContent = (data && data.message) ? data.message : 'Falha ao executar transferência no banco.';
+                } else {
+                  const targetNode = window.gameNodes[targetIp];
+                  const myNode = window.gameNodes[window.userIp];
+
+                  if (targetNode) {
+                    targetNode.jdcoin = data.target_balance;
+                    if (targetNode.folders && targetNode.folders.jdcoin) {
+                      targetNode.folders.jdcoin.forEach(file => {
+                        if (file.name.includes('extrato') || file.content.includes('Saldo total')) {
+                          file.content = `[DOC] Saldo total acumulado: ${targetNode.jdcoin.toFixed(2)} JDCoins.`;
+                        }
+                      });
+                    }
+                  }
+
+                  if (myNode) {
+                    myNode.jdcoin = data.attacker_balance;
+                    if (myNode.folders && myNode.folders.jdcoin) {
+                      myNode.folders.jdcoin.forEach(file => {
+                        if (file.name.includes('extrato') || file.content.includes('Saldo total')) {
+                          file.content = `[DOC] Saldo total acumulado: ${myNode.jdcoin.toFixed(2)} JDCoins.`;
+                        }
+                      });
+                    }
+                  }
+
+                  updateUI();
+                  saveState();
+
+                  response.innerHTML = `<span style="color:var(--green)">[INVASÃO CONCLUÍDA] 50% do saldo (${data.stolen} JDC) foi transferido do nó ${typedIp}.</span>`;
+                }
+              }
+            } else if (hackAction === 'lock') {
+              const folderToLock = parts[3] ? parts[3].toLowerCase().replace('/', '') : '';
+              const targetNode = window.gameNodes[targetIp];
+
+              if (!['fotos', 'whatsapp', 'instagram', 'tiktok', 'jdcoin'].includes(folderToLock)) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Pasta inválida. Opções: fotos, whatsapp, instagram, tiktok, jdcoin';
+              } else if (targetNode.ignoredFolders && targetNode.ignoredFolders.includes(folderToLock) && window.userRole !== 'professor' && window.userRole !== 'admin') {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = `Falha no ataque: A pasta /${folderToLock} está no .gitignore do alvo e não foi localizada.`;
+              } else if (folderToLock === 'jdcoin' && sbClient && (await sbClient.rpc('wallet_lock_status', { p_ip_address: targetIp })).data?.locked && window.userRole !== 'professor' && window.userRole !== 'admin') {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = `Falha no ataque: A carteira /jdcoin está criptografada. Use 'hack crack ${typedIp}' para quebrar a senha antes.`;
+              } else {
+                if (sbClient) {
+                  await sbClient.from('node_permissions').upsert({
+                    ip_address: targetIp,
+                    folder_name: folderToLock,
+                    is_locked: true
+                  }, { onConflict: 'ip_address,folder_name' });
+                }
+
+                response.innerHTML = `<span style="color:var(--blood-bright)">[SEQUESTRO CONCLUÍDO] Pasta /${folderToLock} de ${typedIp} criptografada e bloqueada.</span>`;
+              }
+            } else if (hackAction === 'crack') {
+              if (!sbClient) {
+                response.style.color = 'var(--blood-bright)';
+                response.textContent = 'Erro: Supabase não conectado.';
+              } else {
+                const { data, error } = await sbClient.rpc('attempt_wallet_bruteforce', {
+                  p_ip_address: targetIp
+                });
+
+                if (error || !data) {
+                  response.style.color = 'var(--blood-bright)';
+                  response.textContent = 'Falha ao executar força bruta no banco.';
+                } else if (!data.locked) {
+                  response.style.color = 'var(--yellow)';
+                  response.textContent = data.message || 'A carteira do alvo não está criptografada.';
+                } else if (data.cracked) {
+                  response.innerHTML = `<span style="color:var(--green)">[FORÇA BRUTA] ${data.message} Tentativas: ${data.attempts.join(', ')}. Use 'hack transfer ${typedIp}' agora.</span>`;
+                } else {
+                  response.style.color = 'var(--blood-bright)';
+                  response.textContent = `[FORÇA BRUTA] ${data.message} Tentativas: ${data.attempts.join(', ')}.`;
+                }
+              }
+            } else {
+              response.style.color = 'var(--blood-bright)';
+              response.textContent = 'Comando hack inválido. Consulte o help.';
+            }
+          }
+          break;
+
+        case 'clear':
+          termOutput.innerHTML = '';
+          return false;
+
+        default:
+          response.style.color = 'var(--blood-bright)';
+          response.textContent = `Comando não reconhecido: ${cmd}. Digite 'help'.`;
+      }
+    }
+
+    termOutput.appendChild(response);
+    termOutput.scrollTop = termOutput.scrollHeight;
+    return false;
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('termPrompt').textContent = `${window.username}@githack:~$`;
+    document.getElementById('nodeName').textContent = window.username.toUpperCase();
+
+    setupRealtimeListener();
+    fetchNodesFromSupabase();
+    updateUI();
+
+    document.querySelector('.terminal-section').addEventListener('click', () => {
+      document.getElementById('termInput').focus();
+    });
+
+    setTimeout(() => {
+      const inp = document.getElementById('termInput');
+      if (inp) inp.focus();
+    }, 150);
+  });
+</script>
+
+<script>
+  window.ACTIVITY_LOCATION = 'jogos_hacker';
+  window.ACTIVITY_LABEL = 'GitHack OS — Terminal de Cibersegurança';
+</script>
+<script src="../shared/activity-tracker.js"></script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

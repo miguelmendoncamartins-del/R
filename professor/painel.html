@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Painel do Professor</title>
+
+<!-- Launcher do professor: só escolhe a turma. Chamada, notas, liberação de
+     jogos e bloqueio de Ctrl+C/V vivem dentro do portal de cada turma
+     (aba "Gestão", só visível pro professor) — ver shared/platform-core.js. -->
+<style>
+  :root{
+    --bg:#0b0d11; --panel:#141821; --panel2:#10131a; --line:#262b36;
+    --green:#4fd1c5; --green-dim:#2f8f86; --blood:#c1121f; --blood-bright:#ff5c5c;
+    --yellow:#ff9466; --ink:#e8ecf1; --ink-dim:#8993a4;
+  }
+  .turma-card{ text-align:center; padding:32px 20px; cursor:pointer; }
+  .turma-card:hover{ border-color:var(--green); }
+  .turma-card .icon{ font-size:44px; margin-bottom:10px; }
+  .turma-card h3{ color:var(--ink); font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; letter-spacing:1px; margin:0; }
+  .card-grid.turma-grid{ grid-template-columns:repeat(auto-fit, 220px); justify-content:center; }
+</style>
+<link rel="stylesheet" href="../shared/platform-core.css">
+
+<script src="../shared/users-db.js"></script>
+</head>
+<body>
+
+<div class="a11y-bar">
+  <div class="label">Corpo Docente</div>
+  <div>
+    <span id="sessionUser" class="label" style="color:var(--yellow)"></span>
+    <button id="btnLogout" class="btn-danger" style="padding:4px 8px; font-size:10px; margin-left:8px;">Sair</button>
+  </div>
+</div>
+
+<div class="app-container">
+  <div class="viewport-content">
+    <div class="card">
+      <h2>Escolha uma turma</h2>
+      <p style="font-size:11px; color:var(--ink-dim); margin:-4px 0 16px;">
+        Chamada, notas, liberação de jogos e bloqueio de Ctrl+C/V ficam dentro do portal de cada turma, na aba "Gestão 🛠️".
+      </p>
+      <!-- IP do jogo do hacker (GitHack OS) é diferente por turma: cada linha de
+           network_nodes pertence a uma turma só, então o professor precisa de
+           um nó próprio em cada subnet (192.168.1.254 em Jogos, 192.168.2.254
+           em Sistemas) pra aparecer no netscan dos alunos da turma que estiver
+           jogando — ver sql/supabase-setup-completo.sql (bloco 6b). -->
+      <div class="card-grid turma-grid">
+        <div class="card turma-card" onclick="window.open('../turmas/jogos/plataforma.html?user=admin&ip=192.168.1.254&saldo=9999.00&role=professor', '_blank')">
+          <div class="icon">🎮</div>
+          <h3>Jogos Digitais</h3>
+        </div>
+        <div class="card turma-card" onclick="window.open('../turmas/sistemas/plataforma.html?user=admin&ip=192.168.2.254&saldo=9999.00&role=professor', '_blank')">
+          <div class="icon">🖥️</div>
+          <h3>Desenvolvimento de Sistemas</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const paramUser = urlParams.get('user') || 'admin';
+
+const DB = { users: {} };
+(window.USERS_DB || []).forEach(u => { DB.users[u.email] = { ...u, progress: 0 }; });
+
+const currentUser = DB.users[paramUser] || { email: paramUser, nome: paramUser, role: 'professor', turma: 'all' };
+document.getElementById('sessionUser').textContent = currentUser.nome;
+
+document.getElementById('btnLogout').addEventListener('click', () => {
+  sessionStorage.clear();
+  window.location.href = '../index.html';
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizRush da Turma — Portal de Aulas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+    --k-red:#e21b3c; --k-blue:#1368ce; --k-yellow:#ffa602; --k-green:#26890c;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:'JetBrains Mono', monospace; height:100vh; overflow:hidden;
+  }
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050805;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(124,255,63,0.15);
+    overflow:hidden; position:relative;
+  }
+  .screen{ flex:1; min-height:0; display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px; gap:16px; overflow:auto; text-align:center; }
+  .screen.show{ display:flex; }
+
+  h1.title{ font-family:'VT323', monospace; font-size:34px; color:var(--green); margin:0; letter-spacing:1px; text-shadow:0 0 8px rgba(124,255,63,.35); }
+  .subtitle{ font-size:11.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin:0; }
+  .hint{ font-size:12px; color:var(--ink-dim); max-width:440px; line-height:1.5; }
+
+  .btn{
+    font-family:'JetBrains Mono', monospace; font-weight:800; font-size:13px; letter-spacing:.5px;
+    padding:12px 22px; border-radius:6px; border:2px solid var(--green-dim); background:var(--panel2);
+    color:var(--green); cursor:pointer; transition:transform .1s, box-shadow .15s;
+  }
+  .btn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 4px 14px rgba(124,255,63,.25); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn-primary{ background:var(--green); color:#04240a; border-color:var(--green); }
+  .btn-danger{ border-color:var(--blood-bright); color:var(--blood-bright); background:var(--panel2); }
+  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+
+  select, input[type=number]{
+    font-family:'JetBrains Mono', monospace; font-size:13px; background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:5px; padding:9px 10px; min-width:260px;
+  }
+  label.field{ display:flex; flex-direction:column; gap:6px; font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.5px; }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px 22px; max-width:520px; width:100%; }
+  .badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-size:10.5px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
+  .badge.ok{ background:rgba(124,255,63,.15); color:var(--green); border:1px solid var(--green-dim); }
+  .badge.warn{ background:rgba(255,166,2,.15); color:var(--k-yellow); border:1px solid var(--k-yellow); }
+
+  .player-list{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:520px; }
+  .player-chip{ background:var(--panel2); border:1px solid var(--green-dim); color:var(--ink); font-size:11.5px; padding:6px 12px; border-radius:20px; animation:pop .25s ease; }
+  @keyframes pop{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+  /* ---------- Modo "ao vivo" (pergunta/revelação/pódio): visual vibrante, ---------- */
+  /* de propósito bem diferente do resto do portal — é o momento chamativo. */
+  .live{ background:radial-gradient(circle at 50% -10%, #2a0845, #0a0d0a 60%); }
+
+  .timer-ring{ position:relative; width:88px; height:88px; border-radius:50%; flex-shrink:0;
+    background:conic-gradient(var(--k-yellow) calc(var(--pct,100) * 1%), #241a00 0); display:flex; align-items:center; justify-content:center; }
+  .timer-ring::before{ content:''; position:absolute; inset:6px; border-radius:50%; background:#0a0d0a; }
+  .timer-ring span{ position:relative; font-family:'VT323', monospace; font-size:34px; color:#fff; }
+  .timer-ring.urgent{ animation:pulseUrgent .5s infinite; }
+  @keyframes pulseUrgent{ 0%,100%{ filter:none; } 50%{ filter:drop-shadow(0 0 10px var(--k-red)); } }
+
+  .q-head{ display:flex; align-items:center; gap:16px; justify-content:center; flex-wrap:wrap; }
+  .q-prompt{ font-size:20px; color:#fff; max-width:720px; line-height:1.4; background:rgba(255,255,255,.06); border-radius:10px; padding:16px 22px; }
+  .q-meta{ font-size:11.5px; color:#c9b8ff; }
+
+  .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; max-width:640px; }
+  .tile{
+    position:relative; border:none; border-radius:10px; padding:22px 16px; font-family:'JetBrains Mono', monospace;
+    font-weight:700; font-size:15px; color:#fff; cursor:pointer; text-align:left; display:flex; align-items:center; gap:12px;
+    box-shadow:0 4px 0 rgba(0,0,0,.35); transition:transform .08s;
+  }
+  .tile:active:not(:disabled){ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.35); }
+  .tile:disabled{ opacity:.55; cursor:default; }
+  .tile .shape{ font-size:20px; flex-shrink:0; }
+  .tile.c0{ background:var(--k-red); } .tile.c1{ background:var(--k-blue); }
+  .tile.c2{ background:var(--k-yellow); } .tile.c3{ background:var(--k-green); }
+  .tile.chosen{ outline:4px solid #fff; }
+
+  .bar-row{ display:flex; align-items:center; gap:10px; width:100%; max-width:640px; font-size:11.5px; color:#e7ddff; }
+  .bar-row .shape{ width:20px; flex-shrink:0; }
+  .bar-track{ flex:1; height:14px; background:rgba(255,255,255,.08); border-radius:8px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:8px; transition:width .4s ease; }
+
+  .feedback-big{ font-family:'VT323', monospace; font-size:52px; letter-spacing:1px; }
+  .feedback-big.correct{ color:var(--green); text-shadow:0 0 16px rgba(124,255,63,.6); }
+  .feedback-big.wrong{ color:var(--blood-bright); text-shadow:0 0 16px rgba(255,59,48,.6); }
+
+  .podium-wrap{ display:flex; align-items:flex-end; gap:14px; justify-content:center; width:100%; max-width:560px; }
+  .podium-col{ display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+  .podium-name{ font-size:11.5px; color:#fff; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .podium-score{ font-size:11px; color:var(--k-yellow); font-weight:800; }
+  .podium-bar{ width:100%; border-radius:8px 8px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:8px; font-family:'VT323', monospace; font-size:26px; color:#3a2a00; }
+  .p1 .podium-bar{ height:150px; background:linear-gradient(#ffe27a, var(--k-yellow)); }
+  .p2 .podium-bar{ height:110px; background:linear-gradient(#e7e7e7, #b9b9b9); color:#333; }
+  .p3 .podium-bar{ height:80px; background:linear-gradient(#e8b98a, #cd7f32); color:#3a2200; }
+
+  .rank-list{ list-style:none; margin:0; padding:0; max-width:420px; width:100%; text-align:left; }
+  .rank-list li{ display:flex; justify-content:space-between; gap:10px; padding:6px 12px; font-size:12px; border-bottom:1px solid rgba(255,255,255,.08); color:#e7ddff; }
+  .rank-list li.me{ background:rgba(124,255,63,.12); border-radius:6px; color:var(--green); font-weight:800; }
+
+  .confetti{ position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:5; }
+  .confetti i{ position:absolute; top:-10%; width:8px; height:14px; opacity:.9; animation:fall linear forwards; }
+  @keyframes fall{ to{ transform:translateY(115vh) rotate(540deg); opacity:.2; } }
+
+  .empty-state{ color:var(--ink-dim); font-size:12px; }
+</style>
+</head>
+<body>
+
+<div class="env" id="env">
+
+  <!-- ---------- Carregando ---------- -->
+  <div class="screen show" id="scrLoading">
+    <h1 class="title">🎉 QuizRush</h1>
+    <p class="hint">Carregando...</p>
+  </div>
+
+  <!-- ---------- Supabase não configurado ---------- -->
+  <div class="screen" id="scrDisabled">
+    <h1 class="title">🎉 QuizRush</h1>
+    <div class="card">
+      <p class="hint" style="margin:0;">O QuizRush da turma precisa do Supabase configurado (é uma partida ao vivo, sincronizada entre professor e alunos). Rode <code>sql/supabase-quizrush.sql</code> no Supabase e configure <code>shared/supabase-config.js</code>.</p>
+    </div>
+  </div>
+
+  <!-- ---------- Professor: montar um QuizRush novo ---------- -->
+  <div class="screen" id="scrSetup">
+    <h1 class="title">🎉 Criar um QuizRush</h1>
+    <p class="subtitle">Escolha uma aula teórica com quiz — as perguntas vêm direto do gabarito dela</p>
+    <div class="card" style="display:flex; flex-direction:column; gap:14px; align-items:stretch;">
+      <label class="field">Atividade
+        <select id="selModule"></select>
+      </label>
+      <div id="setupEmptyWarn" class="hint" style="display:none; color:var(--k-yellow);">⚠️ Nenhuma atividade com quiz de múltipla escolha foi encontrada nesta turma ainda.</div>
+      <button class="btn" id="btnFetchQuestions">🔎 Buscar perguntas</button>
+      <div id="setupResult" style="display:none; flex-direction:column; gap:12px;">
+        <div id="setupResultText" class="hint"></div>
+        <label class="field">Tempo por pergunta (segundos)
+          <input type="number" id="inpDuration" min="5" max="120" value="25">
+        </label>
+        <button class="btn btn-primary" id="btnCreateSession">🚀 Iniciar QuizRush</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- Aluno: nenhum quizrush ao vivo ---------- -->
+  <div class="screen" id="scrNoSession">
+    <h1 class="title">🎉 QuizRush</h1>
+    <div class="card">
+      <p class="hint" style="margin:0;">Nenhum QuizRush ao vivo agora. Assim que o professor iniciar um, esta tela muda sozinha — fique à vontade pra deixar aberta. 👀</p>
+    </div>
+  </div>
+
+  <!-- ---------- Aluno: entrar na partida ---------- -->
+  <div class="screen" id="scrJoin">
+    <h1 class="title">🎉 QuizRush ao vivo!</h1>
+    <div class="card">
+      <p class="subtitle" style="margin:0 0 6px;" id="joinTrilha">--</p>
+      <p style="font-size:18px; color:var(--ink); margin:0 0 16px;" id="joinModulo">--</p>
+      <button class="btn btn-primary" id="btnJoin" style="font-size:16px; padding:16px 30px;">🙋 Entrar na Partida</button>
+    </div>
+  </div>
+
+  <!-- ---------- Lobby (host + aluno já dentro) ---------- -->
+  <div class="screen" id="scrLobby">
+    <h1 class="title" id="lobbyTitle">🎉 Sala Aberta</h1>
+    <p class="subtitle" id="lobbySubtitle">--</p>
+    <div class="badge ok" id="lobbyCount">0 jogadores</div>
+    <ul class="player-list" id="lobbyPlayers"></ul>
+    <div class="btn-row" id="lobbyHostActions" style="display:none;">
+      <button class="btn btn-primary" id="btnStart">▶️ Iniciar Partida</button>
+      <button class="btn btn-danger" id="btnCancelLobby">🔚 Cancelar</button>
+    </div>
+    <p class="hint" id="lobbyStudentHint">Você entrou! Aguardando o professor iniciar a partida...</p>
+  </div>
+
+  <!-- ---------- Pergunta ---------- -->
+  <div class="screen live" id="scrQuestion">
+    <div class="q-head">
+      <div class="timer-ring" id="qTimerRing"><span id="qTimerNum">25</span></div>
+      <div>
+        <p class="q-meta" id="qMeta">Pergunta 1 de 10</p>
+        <div class="q-prompt" id="qPrompt">--</div>
+      </div>
+    </div>
+    <div class="tiles" id="qTiles"></div>
+    <p class="hint" id="qHostStatus" style="display:none; color:#e7ddff;">0 de 0 responderam</p>
+    <div class="btn-row" id="qHostActions" style="display:none;">
+      <button class="btn" id="btnRevealNow">⏭️ Revelar agora</button>
+      <button class="btn btn-danger" id="btnEmergencyEndQuestion">🛑 Encerrar</button>
+    </div>
+    <div id="qStudentFeedback" style="display:none;">
+      <div class="feedback-big" id="qStudentFeedbackText">✅</div>
+    </div>
+  </div>
+
+  <!-- ---------- Revelação ---------- -->
+  <div class="screen live" id="scrReveal">
+    <h1 class="title" id="revealBig">--</h1>
+    <div class="q-prompt" id="revealPrompt" style="max-width:640px;">--</div>
+    <div id="revealBars" style="display:flex; flex-direction:column; gap:8px; width:100%; max-width:640px;"></div>
+    <div id="revealPersonal" style="display:none;">
+      <p class="hint" id="revealPersonalText">--</p>
+    </div>
+    <p class="subtitle">🏆 Ranking geral até agora</p>
+    <ul class="rank-list" id="revealLeaderboard"></ul>
+    <div class="btn-row" id="revealHostActions" style="display:none;">
+      <button class="btn btn-primary" id="btnNextOrPodium">➡️ Próxima Pergunta</button>
+      <button class="btn btn-danger" id="btnEmergencyEndReveal">🛑 Encerrar</button>
+    </div>
+  </div>
+
+  <!-- ---------- Pódio final ---------- -->
+  <div class="screen live" id="scrPodium">
+    <div class="confetti" id="confettiBox"></div>
+    <h1 class="title">🏆 Resultado Final</h1>
+    <div class="podium-wrap" id="podiumWrap"></div>
+    <div id="podiumPersonal" style="display:none;">
+      <p class="hint" id="podiumPersonalText">--</p>
+    </div>
+    <ul class="rank-list" id="podiumFullList"></ul>
+    <div class="btn-row" id="podiumHostActions" style="display:none;">
+      <button class="btn btn-primary" id="btnEndQuizRush">🔚 Encerrar QuizRush</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../shared/quizrush-engine.js"></script>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const displayName = urlParams.get('name') || username;
+  const turma = urlParams.get('turma') || '';
+  const role = urlParams.get('role') || 'aluno';
+  const isHost = role === 'professor';
+
+  const SHAPES = ['▲', '◆', '●', '■'];
+
+  const state = {
+    session: null,
+    candidateModules: [],
+    fetchedQuestions: null,
+    players: [],
+    answers: [],
+    joined: false,
+    myAnswerThisQuestion: null, // { choiceIndex, correct, score }
+    clockOffsetMs: 0, // Date.now() + clockOffsetMs ~= relógio do Supabase (ver init/getServerTimeMs)
+    countdownTimer: null,
+    unsubSession: null,
+    unsubPlayers: null,
+    unsubAnswers: null,
+    unsubNewSessions: null,
+  };
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.toggle('show', el.id === id));
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- Áudio (opcional, autocontido — sem arquivo externo) ----------
+  let audioCtx = null;
+  function beep(freq, dur, type) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type || 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + dur);
+    } catch (e) { /* best-effort */ }
+  }
+  function playTick() { beep(880, 0.08); }
+  function playCorrect() { beep(660, 0.12); setTimeout(() => beep(990, 0.18), 90); }
+  function playWrong() { beep(160, 0.25, 'sawtooth'); }
+  function playFanfare() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.22), i * 110)); }
+
+  function launchConfetti() {
+    const box = document.getElementById('confettiBox');
+    box.innerHTML = '';
+    const colors = ['#e21b3c', '#1368ce', '#ffa602', '#26890c', '#7cff3f'];
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement('i');
+      el.style.left = Math.random() * 100 + '%';
+      el.style.background = colors[i % colors.length];
+      el.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+      el.style.animationDelay = (Math.random() * 0.6) + 's';
+      box.appendChild(el);
+    }
+  }
+
+  // ============================================================
+  // Professor — montar um novo QuizRush
+  // ============================================================
+
+  async function renderSetupScreen() {
+    showScreen('scrSetup');
+    const cfgTurma = await window.QuizRushEngine.loadTurmaConfig(turma).catch(() => null);
+    state.candidateModules = cfgTurma ? window.QuizRushEngine.listGabaritoModules(cfgTurma) : [];
+
+    const select = document.getElementById('selModule');
+    const warn = document.getElementById('setupEmptyWarn');
+    if (state.candidateModules.length === 0) {
+      select.innerHTML = '';
+      warn.style.display = 'block';
+      document.getElementById('btnFetchQuestions').disabled = true;
+      return;
+    }
+    warn.style.display = 'none';
+    document.getElementById('btnFetchQuestions').disabled = false;
+
+    const byTrilha = {};
+    state.candidateModules.forEach((c, i) => {
+      (byTrilha[c.trilhaLabel] = byTrilha[c.trilhaLabel] || []).push({ ...c, idx: i });
+    });
+    select.innerHTML = Object.keys(byTrilha).map(trilhaLabel => `
+      <optgroup label="${escapeHtml(trilhaLabel)}">
+        ${byTrilha[trilhaLabel].map(c => `<option value="${c.idx}">${escapeHtml(c.moduleTitle)}</option>`).join('')}
+      </optgroup>
+    `).join('');
+
+    document.getElementById('setupResult').style.display = 'none';
+  }
+
+  async function onFetchQuestions() {
+    const idx = parseInt(document.getElementById('selModule').value, 10);
+    const candidate = state.candidateModules[idx];
+    if (!candidate) return;
+
+    const btn = document.getElementById('btnFetchQuestions');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Buscando...';
+    const questions = await window.QuizRushEngine.fetchModuleQuestions({ turma, mod: candidate.mod, email: username });
+    btn.disabled = false;
+    btn.textContent = original;
+
+    const resultBox = document.getElementById('setupResult');
+    const resultText = document.getElementById('setupResultText');
+    if (questions.length === 0) {
+      resultBox.style.display = 'flex';
+      resultText.innerHTML = `⚠️ Essa atividade não tem perguntas de múltipla escolha (provavelmente é uma atividade prática de código, não um quiz teórico). Escolha outra na lista.`;
+      document.getElementById('btnCreateSession').disabled = true;
+      state.fetchedQuestions = null;
+      return;
+    }
+    state.fetchedQuestions = { questions, candidate };
+    resultBox.style.display = 'flex';
+    resultText.innerHTML = `✅ <b>${questions.length} perguntas</b> encontradas em "<b>${escapeHtml(candidate.moduleTitle)}</b>". Pronto pra começar!`;
+    document.getElementById('btnCreateSession').disabled = false;
+  }
+
+  async function onCreateSession() {
+    if (!state.fetchedQuestions) return;
+    const seconds = Math.max(5, Math.min(120, parseInt(document.getElementById('inpDuration').value, 10) || 25));
+    const { questions, candidate } = state.fetchedQuestions;
+    const btn = document.getElementById('btnCreateSession');
+    btn.disabled = true;
+    btn.textContent = '⏳ Criando...';
+    const session = await window.QuizRushEngine.createSession({
+      turma, email: username, trilhaLabel: candidate.trilhaLabel, moduleTitle: candidate.moduleTitle,
+      questions, durationMs: seconds * 1000
+    });
+    btn.disabled = false;
+    btn.textContent = '🚀 Iniciar QuizRush';
+    if (!session) { alert('Não foi possível criar o QuizRush agora. Tente de novo.'); return; }
+    setSession(session);
+    subscribeToSession();
+    renderForSession();
+  }
+
+  // ============================================================
+  // Estado da sessão — comum a host e aluno
+  // ============================================================
+
+  function setSession(session) {
+    state.session = session;
+  }
+
+  function subscribeToSession() {
+    if (state.unsubSession) state.unsubSession();
+    if (state.unsubPlayers) state.unsubPlayers();
+    if (state.unsubAnswers) state.unsubAnswers();
+    if (state.unsubNewSessions) { state.unsubNewSessions(); state.unsubNewSessions = null; }
+
+    const id = state.session.id;
+    state.unsubSession = window.QuizRushEngine.watchSession(id, async () => {
+      const fresh = await window.QuizRushEngine.getLatestSession(turma);
+      if (fresh && fresh.id === id) {
+        const statusChanged = !state.session || state.session.status !== fresh.status || state.session.current_index !== fresh.current_index;
+        setSession(fresh);
+        if (statusChanged) renderForSession();
+      }
+    });
+    state.unsubPlayers = window.QuizRushEngine.watchPlayers(id, async () => {
+      state.players = await window.QuizRushEngine.fetchPlayers(id);
+      if (state.session.status === 'lobby') renderLobby();
+    });
+    state.unsubAnswers = window.QuizRushEngine.watchAnswers(id, async () => {
+      state.answers = await window.QuizRushEngine.fetchAnswers(id);
+      if (state.session.status === 'question') renderQuestionLiveCounts();
+    });
+  }
+
+  function subscribeToNewSessions() {
+    if (state.unsubNewSessions) return;
+    state.unsubNewSessions = window.QuizRushEngine.watchNewSessions(turma, async () => {
+      const fresh = await window.QuizRushEngine.getLatestSession(turma);
+      if (fresh && fresh.status !== 'ended' && (!state.session || state.session.id !== fresh.id)) {
+        setSession(fresh);
+        subscribeToSession();
+        renderForSession();
+      }
+    });
+  }
+
+  async function renderForSession() {
+    const s = state.session;
+    if (!s || s.status === 'ended') {
+      // Um cronômetro que ficou correndo de uma pergunta/revelação
+      // interrompida (ver onEmergencyEndClick) não pode continuar vivo
+      // depois de "ended" — senão, ao zerar, ele chama reveal() de novo e
+      // "ressuscita" a sessão pra quem já saiu da tela de partida.
+      if (state.countdownTimer) { clearInterval(state.countdownTimer); state.countdownTimer = null; }
+      if (isHost) { renderSetupScreen(); }
+      else { showScreen('scrNoSession'); subscribeToNewSessions(); }
+      return;
+    }
+    state.players = await window.QuizRushEngine.fetchPlayers(s.id);
+    state.answers = await window.QuizRushEngine.fetchAnswers(s.id);
+
+    if (!isHost) {
+      state.joined = state.players.some(p => p.student_email === username);
+      if (!state.joined && s.status === 'lobby') { renderJoinScreen(); return; }
+      if (!state.joined) { await window.QuizRushEngine.joinSession(s.id, username, displayName); state.joined = true; state.players = await window.QuizRushEngine.fetchPlayers(s.id); }
+    }
+
+    if (s.status === 'lobby') renderLobby();
+    else if (s.status === 'question') renderQuestion();
+    else if (s.status === 'reveal') renderReveal();
+    else if (s.status === 'podium') renderPodium();
+  }
+
+  // ============================================================
+  // Lobby
+  // ============================================================
+
+  function renderJoinScreen() {
+    showScreen('scrJoin');
+    document.getElementById('joinTrilha').textContent = state.session.trilha_label || '';
+    document.getElementById('joinModulo').textContent = state.session.module_title || '';
+  }
+
+  async function onJoinClick() {
+    beep(440, 0.1);
+    await window.QuizRushEngine.joinSession(state.session.id, username, displayName);
+    state.joined = true;
+    state.players = await window.QuizRushEngine.fetchPlayers(state.session.id);
+    renderLobby();
+  }
+
+  function renderLobby() {
+    showScreen('scrLobby');
+    document.getElementById('lobbySubtitle').textContent = `${state.session.trilha_label || ''} — ${state.session.module_title || ''}`;
+    document.getElementById('lobbyCount').textContent = `${state.players.length} jogador${state.players.length === 1 ? '' : 'es'}`;
+    document.getElementById('lobbyPlayers').innerHTML = state.players.map(p => `<li class="player-chip">${escapeHtml(p.student_name)}</li>`).join('')
+      || '<li class="empty-state">Aguardando alunos entrarem pela aba Jogos...</li>';
+
+    document.getElementById('lobbyHostActions').style.display = isHost ? 'flex' : 'none';
+    document.getElementById('lobbyStudentHint').style.display = isHost ? 'none' : 'block';
+    if (isHost) document.getElementById('btnStart').disabled = state.players.length === 0;
+  }
+
+  // As ações do host abaixo atualizam o estado local e re-renderizam na
+  // hora, além de gravar no Supabase — o host não devia depender só da
+  // volta do Realtime (latência, ou o canal cair um instante) pra ver a
+  // própria ação surtir efeito. Quem depende só do Realtime é o aluno.
+  async function onStartClick() {
+    const startedAt = await window.QuizRushEngine.startSession(state.session.id);
+    if (!startedAt) {
+      alert('Não foi possível iniciar o QuizRush (falha ao falar com o Supabase). Veja o console (F12) para detalhes e tente de novo.');
+      return;
+    }
+    playFanfare();
+    Object.assign(state.session, { status: 'question', current_index: 0, question_started_at: startedAt });
+    await renderForSession();
+  }
+
+  async function onCancelLobbyClick() {
+    if (!confirm('Cancelar este QuizRush?')) return;
+    await window.QuizRushEngine.endSession(state.session.id);
+    state.session.status = 'ended';
+    await renderForSession();
+  }
+
+  // ============================================================
+  // Pergunta
+  // ============================================================
+
+  function currentQuestion() {
+    return state.session.questions[state.session.current_index];
+  }
+
+  function renderQuestion() {
+    showScreen('scrQuestion');
+    state.myAnswerThisQuestion = null;
+
+    const q = currentQuestion();
+    document.getElementById('qMeta').textContent = `Pergunta ${state.session.current_index + 1} de ${state.session.questions.length}`;
+
+    // Pergunta e alternativas por extenso pros dois lados — o aluno
+    // precisa dar pra jogar direto pelo próprio aparelho, sem depender de
+    // enxergar a tela do professor (ex.: aula remota, sala sem telão).
+    const tiles = document.getElementById('qTiles');
+    document.getElementById('qPrompt').innerHTML = q.prompt;
+    tiles.innerHTML = q.options.map((opt, i) => `
+      <button class="tile c${i}" data-choice="${i}" ${isHost ? 'disabled' : ''}>
+        <span class="shape">${SHAPES[i] || '?'}</span><span>${opt}</span>
+      </button>
+    `).join('');
+    if (!isHost) tiles.querySelectorAll('.tile').forEach(t => t.addEventListener('click', onTileClick));
+
+    document.getElementById('qHostStatus').style.display = isHost ? 'block' : 'none';
+    document.getElementById('qHostActions').style.display = isHost ? 'flex' : 'none';
+    document.getElementById('qStudentFeedback').style.display = 'none';
+    renderQuestionLiveCounts();
+    startCountdown();
+  }
+
+  function renderQuestionLiveCounts() {
+    if (!isHost) return;
+    const forThisQ = state.answers.filter(a => a.question_index === state.session.current_index);
+    document.getElementById('qHostStatus').textContent = `${forThisQ.length} de ${state.players.length} responderam`;
+  }
+
+  function startCountdown() {
+    if (state.countdownTimer) clearInterval(state.countdownTimer);
+    const startedAt = new Date(state.session.question_started_at).getTime();
+    const duration = state.session.question_duration_ms;
+    let autoRevealed = false;
+    let lastTickedSecond = null;
+
+    function tick() {
+      const elapsed = (Date.now() + state.clockOffsetMs) - startedAt;
+      const remainingMs = Math.max(0, duration - elapsed);
+      const remainingSec = Math.ceil(remainingMs / 1000);
+      const pct = Math.round((remainingMs / duration) * 100);
+
+      const ring = document.getElementById('qTimerRing');
+      ring.style.setProperty('--pct', pct);
+      ring.classList.toggle('urgent', remainingSec <= 3 && remainingSec > 0);
+      document.getElementById('qTimerNum').textContent = remainingSec;
+
+      if (remainingSec <= 3 && remainingSec > 0 && remainingSec !== lastTickedSecond) {
+        lastTickedSecond = remainingSec;
+        playTick();
+      }
+
+      if (remainingMs <= 0) {
+        clearInterval(state.countdownTimer);
+        if (isHost && !autoRevealed) {
+          autoRevealed = true;
+          window.QuizRushEngine.reveal(state.session.id).then(() => {
+            state.session.status = 'reveal';
+            renderForSession();
+          });
+        }
+        if (!isHost && !state.myAnswerThisQuestion) {
+          document.querySelectorAll('#qTiles .tile').forEach(t => t.disabled = true);
+          const fb = document.getElementById('qStudentFeedback');
+          fb.style.display = 'block';
+          document.getElementById('qStudentFeedbackText').className = 'feedback-big';
+          document.getElementById('qStudentFeedbackText').textContent = '⏱️ Tempo esgotado!';
+        }
+      }
+    }
+    tick();
+    state.countdownTimer = setInterval(tick, 100);
+  }
+
+  async function onTileClick(e) {
+    if (state.myAnswerThisQuestion) return;
+    const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice'), 10);
+    document.querySelectorAll('#qTiles .tile').forEach(t => t.disabled = true);
+    e.currentTarget.classList.add('chosen');
+
+    const startedAt = new Date(state.session.question_started_at).getTime();
+    const elapsedMs = Math.max(0, Math.min(state.session.question_duration_ms, (Date.now() + state.clockOffsetMs) - startedAt));
+    const q = currentQuestion();
+    const result = await window.QuizRushEngine.submitAnswer({
+      sessionId: state.session.id, email: username, name: displayName,
+      questionIndex: state.session.current_index, choiceIndex, correctIndex: q.correctIndex,
+      elapsedMs, durationMs: state.session.question_duration_ms
+    });
+    state.myAnswerThisQuestion = { choiceIndex, ...result };
+
+    const fb = document.getElementById('qStudentFeedback');
+    fb.style.display = 'block';
+    document.getElementById('qStudentFeedbackText').textContent = '✅ Resposta enviada! Aguardando os outros...';
+    document.getElementById('qStudentFeedbackText').className = 'feedback-big';
+    beep(520, 0.08);
+  }
+
+  async function onRevealNowClick() {
+    if (state.countdownTimer) clearInterval(state.countdownTimer);
+    await window.QuizRushEngine.reveal(state.session.id);
+    state.session.status = 'reveal';
+    await renderForSession();
+  }
+
+  // ============================================================
+  // Revelação
+  // ============================================================
+
+  async function renderReveal() {
+    showScreen('scrReveal');
+    if (state.countdownTimer) clearInterval(state.countdownTimer);
+    state.answers = await window.QuizRushEngine.fetchAnswers(state.session.id);
+
+    const q = currentQuestion();
+    const forThisQ = state.answers.filter(a => a.question_index === state.session.current_index);
+    const counts = q.options.map((_, i) => forThisQ.filter(a => a.choice_index === i).length);
+    const maxCount = Math.max(1, ...counts);
+    const colors = ['var(--k-red)', 'var(--k-blue)', 'var(--k-yellow)', 'var(--k-green)'];
+
+    document.getElementById('revealPrompt').innerHTML = q.prompt;
+    document.getElementById('revealBars').innerHTML = q.options.map((opt, i) => `
+      <div class="bar-row">
+        <span class="shape">${SHAPES[i]}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${(counts[i] / maxCount) * 100}%; background:${colors[i]};"></div></div>
+        <span>${escapeHtml(opt)} ${i === q.correctIndex ? '✔' : ''} (${counts[i]})</span>
+      </div>
+    `).join('');
+
+    const myAnswer = forThisQ.find(a => a.student_email === username);
+    document.getElementById('revealBig').textContent = q.options[q.correctIndex] ? `Resposta certa: ${q.options[q.correctIndex]}` : 'Revelação';
+
+    document.getElementById('revealPersonal').style.display = isHost ? 'none' : 'block';
+    if (!isHost) {
+      if (myAnswer) {
+        document.getElementById('revealPersonalText').innerHTML = myAnswer.is_correct
+          ? `✅ Você acertou! <b>+${myAnswer.score} pontos</b>`
+          : `❌ Não foi dessa vez.`;
+        if (myAnswer.is_correct) playCorrect(); else playWrong();
+      } else {
+        document.getElementById('revealPersonalText').textContent = '⏱️ Você não respondeu a tempo.';
+        playWrong();
+      }
+    }
+
+    const leaderboard = window.QuizRushEngine.leaderboardFrom(state.answers).slice(0, 5);
+    document.getElementById('revealLeaderboard').innerHTML = leaderboard.map(r => `
+      <li class="${r.email === username ? 'me' : ''}"><span>${escapeHtml(r.name)}</span><span>${r.score}</span></li>
+    `).join('') || '<li class="empty-state">Sem respostas ainda</li>';
+
+    document.getElementById('revealHostActions').style.display = isHost ? 'flex' : 'none';
+    if (isHost) {
+      const isLast = state.session.current_index >= state.session.questions.length - 1;
+      document.getElementById('btnNextOrPodium').textContent = isLast ? '🏆 Ver Pódio Final' : '➡️ Próxima Pergunta';
+    }
+  }
+
+  async function onNextOrPodiumClick() {
+    const isLast = state.session.current_index >= state.session.questions.length - 1;
+    if (isLast) {
+      await window.QuizRushEngine.showPodium(state.session.id);
+      state.session.status = 'podium';
+    } else {
+      const nextIndex = state.session.current_index + 1;
+      const startedAt = await window.QuizRushEngine.nextQuestion(state.session.id, nextIndex);
+      if (!startedAt) {
+        alert('Não foi possível avançar a pergunta (falha ao falar com o Supabase). Veja o console (F12) para detalhes e tente de novo.');
+        return;
+      }
+      Object.assign(state.session, { status: 'question', current_index: nextIndex, question_started_at: startedAt });
+    }
+    await renderForSession();
+  }
+
+  // ============================================================
+  // Pódio final
+  // ============================================================
+
+  async function renderPodium() {
+    showScreen('scrPodium');
+    state.answers = await window.QuizRushEngine.fetchAnswers(state.session.id);
+    const leaderboard = window.QuizRushEngine.leaderboardFrom(state.answers);
+
+    launchConfetti();
+    playFanfare();
+
+    const order = [1, 0, 2]; // 2º, 1º, 3º (layout clássico de pódio)
+    const wrap = document.getElementById('podiumWrap');
+    wrap.innerHTML = order.map(pos => {
+      const r = leaderboard[pos];
+      const place = pos + 1;
+      if (!r) return `<div class="podium-col p${place}"><div class="podium-bar">${place}º</div></div>`;
+      return `
+        <div class="podium-col p${place}">
+          <div class="podium-name">${escapeHtml(r.name)}</div>
+          <div class="podium-score">${r.score} pts</div>
+          <div class="podium-bar">${place}º</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('podiumFullList').innerHTML = leaderboard.map((r, i) => `
+      <li class="${r.email === username ? 'me' : ''}"><span>${i + 1}º ${escapeHtml(r.name)}</span><span>${r.score} pts (${r.correct} acertos)</span></li>
+    `).join('') || '<li class="empty-state">Ninguém pontuou</li>';
+
+    document.getElementById('podiumPersonal').style.display = isHost ? 'none' : 'block';
+    if (!isHost) {
+      const myRank = leaderboard.findIndex(r => r.email === username);
+      const text = myRank === -1 ? 'Você não pontuou nesta partida.' :
+        `Você ficou em <b>${myRank + 1}º lugar</b> com <b>${leaderboard[myRank].score} pontos</b>!`;
+      document.getElementById('podiumPersonalText').innerHTML = text;
+    }
+
+    document.getElementById('podiumHostActions').style.display = isHost ? 'flex' : 'none';
+  }
+
+  async function onEndQuizRushClick() {
+    await window.QuizRushEngine.endSession(state.session.id);
+    state.session.status = 'ended';
+    await renderForSession();
+  }
+
+  // Saída de emergência pro professor em caso de problema em plena
+  // partida (pergunta travada, RPC falhando, etc.) — diferente de
+  // "Encerrar QuizRush" do pódio, aqui a partida é interrompida antes do
+  // fim, por isso pede confirmação.
+  async function onEmergencyEndClick() {
+    if (!confirm('Encerrar este QuizRush agora? A partida termina pra todo mundo, mesmo sem chegar ao pódio.')) return;
+    if (state.countdownTimer) { clearInterval(state.countdownTimer); state.countdownTimer = null; }
+    await window.QuizRushEngine.endSession(state.session.id);
+    state.session.status = 'ended';
+    await renderForSession();
+  }
+
+  // ============================================================
+  // Boot
+  // ============================================================
+
+  async function init() {
+    if (!window.QuizRushEngine || !window.QuizRushEngine.enabled) { showScreen('scrDisabled'); return; }
+
+    state.clockOffsetMs = await window.QuizRushEngine.getServerTimeMs();
+
+    const latest = await window.QuizRushEngine.getLatestSession(turma);
+    if (latest && latest.status !== 'ended') {
+      setSession(latest);
+      subscribeToSession();
+      await renderForSession();
+    } else if (isHost) {
+      renderSetupScreen();
+    } else {
+      showScreen('scrNoSession');
+      subscribeToNewSessions();
+    }
+  }
+
+  document.getElementById('btnFetchQuestions').addEventListener('click', onFetchQuestions);
+  document.getElementById('btnCreateSession').addEventListener('click', onCreateSession);
+  document.getElementById('btnJoin').addEventListener('click', onJoinClick);
+  document.getElementById('btnStart').addEventListener('click', onStartClick);
+  document.getElementById('btnCancelLobby').addEventListener('click', onCancelLobbyClick);
+  document.getElementById('btnRevealNow').addEventListener('click', onRevealNowClick);
+  document.getElementById('btnNextOrPodium').addEventListener('click', onNextOrPodiumClick);
+  document.getElementById('btnEndQuizRush').addEventListener('click', onEndQuizRushClick);
+  document.getElementById('btnEmergencyEndQuestion').addEventListener('click', onEmergencyEndClick);
+  document.getElementById('btnEmergencyEndReveal').addEventListener('click', onEmergencyEndClick);
+
+  init();
+
+  window.ACTIVITY_LOCATION = 'jogos_quizrush';
+  window.ACTIVITY_LABEL = 'QuizRush da Turma';
+</script>
+
+<script src="../shared/activity-tracker.js"></script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

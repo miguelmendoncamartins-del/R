@@ -1,0 +1,212 @@
+/* Estrutura visual da plataforma de ensino — compartilhada por TODAS as turmas.
+   Cores não entram aqui: cada turma define sua própria paleta (--bg, --panel,
+   --green, etc.) no <style> do seu turmas/<turma>/plataforma.html antes de
+   carregar este arquivo. Mudar este CSS afeta todas as turmas; para mudar
+   a cara de uma turma específica, edite o tema dela, não este arquivo. */
+
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+:root{
+  --user-font: 'JetBrains Mono', monospace;
+  --user-font-scale: 1;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;}
+body{
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0px, rgba(0,0,0,0.22) 1px, transparent 1px, transparent 3px),
+    radial-gradient(ellipse at 50% -10%, #14201233, transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--user-font);
+  font-size:calc(15px * var(--user-font-scale));
+  display:flex; flex-direction:column;
+}
+
+/* #app é o wrapper que shared/platform-core.js usa pra montar a tela
+   inteira (renderShell). Sem isso, ele fica como uma div comum sem altura
+   definida — a cadeia "flex:1" de .app-container/.viewport-content abaixo
+   não tem contra quem se apoiar, então nada scrolla e conteúdo alto (como
+   a aba Gestão) fica simplesmente inacessível abaixo da dobra. */
+#app{ display:flex; flex-direction:column; height:100%; }
+
+.a11y-bar{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:4px 14px; border-bottom:1px solid var(--line); background:var(--panel2); flex-wrap:wrap; z-index:10;
+}
+.a11y-bar .label{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; }
+.a11y-bar > div{ display:flex; align-items:center; gap:4px; }
+.a11y-bar button{
+  font-size:13px; line-height:1; padding:4px 8px; background:transparent; color:var(--ink-dim);
+  border:1px solid var(--line); cursor:pointer;
+}
+.a11y-bar button.on{ background:var(--green); color:#04220a; border-color:var(--green); }
+#btnLibras.on{ background:#3a8bd8; color:#04150c; border-color:#3a8bd8; }
+
+.app-container{ flex:1; display:flex; flex-direction:column; max-width:1280px; width:100%; margin:0 auto; padding:8px 16px; overflow:hidden; }
+
+.statusbar{
+  display:flex; align-items:center; justify-content:space-between; gap:18px;
+  border:1px solid var(--line); background:var(--panel); padding:6px 12px; margin-bottom:8px; flex-wrap:wrap;
+}
+.user-info{ font-size:12px; color:var(--yellow); }
+.ranking-badge{
+  font-size:11.5px; font-weight:700; color:var(--green); background:var(--panel2);
+  border:1px solid var(--green-dim); padding:4px 10px; border-radius:2px; white-space:nowrap;
+}
+
+.tabs{ display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+.tab-btn{
+  font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+  background:transparent; color:var(--ink-dim); border:1px solid var(--line); padding:7px 14px; cursor:pointer; border-radius:2px;
+}
+.tab-btn:hover{ color:var(--ink); border-color:var(--ink-dim); }
+.tab-btn.active{ background:var(--green); color:#04220a; border-color:var(--green); }
+.tab-btn.disabled{ opacity:0.3; cursor:not-allowed; border-color:var(--line) !important; color:var(--ink-dim) !important; background:transparent !important; }
+
+/* Sub-navegação de trilha: 2+ trilhas viram um <select> só (mais conciso
+   que uma fileira de botões, e usa o seletor nativo no celular); com 1
+   trilha só, o JS esconde isso inteiro (ver renderTrilhas em platform-core.js) — não faz sentido escolher entre uma opção. */
+.subtabs{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.subtabs .subtab-label{ font-size:9.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; }
+.subtabs select{ min-width:160px; }
+
+.viewport-content{ flex:1; position:relative; overflow-y:auto; }
+.tab-page{ height:100%; }
+
+.card{ background:var(--panel); border:1px solid var(--line); padding:14px; margin-bottom:12px; }
+.card h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:calc(24px * var(--user-font-scale)); color:var(--green); margin:0 0 10px; }
+
+.collapsible-card{ padding:0; }
+.collapsible-card .collapsible-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px; cursor:pointer; user-select:none; }
+.collapsible-card .collapsible-head h2{ margin:0; }
+.collapsible-card .collapsible-arrow{ color:var(--ink-dim); font-size:14px; flex-shrink:0; transition:transform .15s ease; }
+.collapsible-card.expanded .collapsible-arrow{ transform:rotate(90deg); }
+.collapsible-card .collapsible-body{ display:none; padding:0 14px 14px; }
+.collapsible-card.expanded .collapsible-body{ display:block; }
+
+.gestao-subhead{
+  font-family:var(--user-font-display, 'VT323', monospace); font-size:16px; color:var(--yellow);
+  letter-spacing:1px; margin:18px 0 10px; padding-top:14px; border-top:1px solid var(--line);
+}
+.gestao-subhead:first-child{ margin-top:0; padding-top:0; border-top:none; }
+
+.empty-state{ font-size:12px; color:var(--ink-dim); padding:24px; text-align:center; border:1px dashed var(--line); }
+
+.game-card{ border:1px solid var(--line); background:var(--panel2); padding:14px; text-align:center; cursor:pointer; }
+.game-card .icon{ font-size:32px; margin-bottom:8px; }
+.game-card h3{ color:var(--yellow); margin:0 0 6px; }
+.game-card p{ font-size:11px; color:var(--ink-dim); margin:0; }
+.game-card .card-status{ font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-dim); margin-top:8px; }
+.game-card.completed{ border-color:var(--green-dim); }
+.game-card.completed .card-status{ color:var(--green); }
+.game-card.locked{ opacity:0.4; cursor:not-allowed; }
+.card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; }
+
+button.btn{
+  font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+  background:var(--green); color:#04220a; border:none; padding:8px 16px; cursor:pointer; border-radius:2px;
+}
+button.btn-danger{ background:var(--blood); color:#fff; }
+button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+.audit-table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+.audit-table th{ text-align:left; color:var(--ink-dim); border-bottom:1px solid var(--line); padding:8px 6px; text-transform:uppercase; }
+.audit-table td{ padding:8px 6px; border-bottom:1px solid #1a221a; }
+.log-box{ background:#060806; border:1px solid var(--line); padding:10px; font-size:11px; height:140px; overflow-y:auto; font-family:'JetBrains Mono', monospace; }
+.log-entry{ margin-bottom:4px; color:var(--ink-dim); }
+.log-entry .time{ color:var(--yellow); }
+
+/* Chamada / Notas (aba Gestão, só professor) */
+.field-label{ display:block; font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+.field-row{ display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:14px; }
+.status-msg{ font-size:11px; color:var(--ink-dim); }
+.media-cell{ color:var(--yellow); font-weight:700; }
+select, input[type="date"], input[type="number"]{
+  background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+  padding:7px 10px; font-family:inherit; font-size:12px; border-radius:2px;
+}
+select{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888888'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center;
+  padding-right:26px; cursor:pointer;
+}
+select:hover{ border-color:var(--ink-dim); }
+select:focus{ border-color:var(--green); outline:none; }
+input[type="number"]{ width:70px; }
+input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--green); cursor:pointer; }
+
+/* Alerta estilizado (JS: showAlert em platform-core.js), no lugar do window.alert nativo */
+.pf-alert-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9999;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.pf-alert-box{
+  background:var(--panel); border:1px solid var(--blood-bright); max-width:380px; width:100%;
+  padding:20px; box-shadow:0 8px 30px rgba(0,0,0,0.5);
+}
+.pf-alert-msg{ font-size:13px; color:var(--ink); line-height:1.5; margin:0 0 16px; white-space:pre-line; }
+.pf-alert-box .pf-alert-ok{ display:block; margin-left:auto; }
+
+/* Notificação leve (JS: showToast em platform-core.js) — avisa sobre uma
+   atividade nova liberada sem travar a tela, ao contrário do pf-alert-*. */
+.pf-toast-stack{
+  position:fixed; top:48px; right:16px; z-index:9998;
+  display:flex; flex-direction:column; gap:8px; width:min(320px, calc(100vw - 32px));
+}
+.pf-toast{
+  position:relative; background:var(--panel); border:1px solid var(--green-dim);
+  box-shadow:0 8px 26px rgba(0,0,0,0.5); padding:12px 30px 12px 14px;
+  animation:pfToastIn .2s ease;
+}
+.pf-toast-title{
+  display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:16px;
+  color:var(--green); letter-spacing:0.5px; margin-bottom:4px;
+}
+.pf-toast-msg{ font-size:12px; color:var(--ink); line-height:1.5; }
+.pf-toast-close{
+  position:absolute; top:8px; right:8px; background:transparent; border:none;
+  color:var(--ink-dim); cursor:pointer; font-size:12px; padding:2px 4px; line-height:1;
+}
+.pf-toast-close:hover{ color:var(--ink); }
+@keyframes pfToastIn{ from{ opacity:0; transform:translateX(24px); } to{ opacity:1; transform:translateX(0); } }
+
+/* Perfil do aluno (progresso + insígnias) */
+.perfil-stats-row{ display:flex; gap:12px; flex-wrap:wrap; }
+.perfil-stat{ flex:1; min-width:140px; background:var(--panel2); border:1px solid var(--line); padding:14px; text-align:center; }
+.perfil-stat-value{ font-family:var(--user-font-display, 'VT323', monospace); font-size:calc(34px * var(--user-font-scale)); color:var(--green); line-height:1; }
+.perfil-stat-label{ font-size:10.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.5px; margin-top:6px; }
+
+.perfil-materia-card{ border:1px solid var(--line); background:var(--panel2); padding:12px 14px; margin-bottom:10px; }
+.perfil-materia-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.perfil-materia-head h3{ margin:0; font-size:13px; color:var(--yellow); }
+.perfil-materia-head span{ font-size:12px; color:var(--green); font-weight:800; }
+.perfil-progress-bar{ height:8px; background:#1a221a; border:1px solid var(--line); overflow:hidden; }
+.perfil-progress-fill{ height:100%; background:var(--green); }
+.perfil-trilhas-list{ margin-top:10px; display:flex; flex-direction:column; gap:4px; }
+.perfil-trilha-row{ display:flex; justify-content:space-between; font-size:11px; color:var(--ink-dim); }
+
+.badge-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:12px; }
+.badge-slot{ border:1px dashed var(--line); background:var(--panel2); padding:16px 10px; text-align:center; opacity:0.5; }
+.badge-slot .icon{ font-size:28px; margin-bottom:6px; }
+.badge-slot .label{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.5px; }
+.badge-slot .badge-desc{ font-size:10px; color:var(--ink-dim); margin-top:6px; line-height:1.4; }
+.badge-slot.unlocked{ opacity:1; border:1px solid var(--green-dim); }
+.badge-slot.unlocked .icon{ filter:drop-shadow(0 0 6px var(--green)); }
+.badge-slot.unlocked .label{ color:var(--green); font-weight:800; }
+
+.module-frame-header{ margin-bottom:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+.game-frame-wrapper{ width:100%; height:100%; border:1px solid var(--line); background:#000; }
+iframe{ width:100%; height:100%; border:none; display:block; }
+
+/* Celular: menos moldura, mais espaço pra tela da aula em si. */
+@media (max-width:700px){
+  .a11y-bar{ padding:4px 10px; }
+  .app-container{ padding:6px 10px; }
+  .statusbar{ padding:6px 10px; gap:10px; }
+  .card{ padding:11px; }
+  .tab-btn{ padding:6px 11px; font-size:11px; }
+  .subtabs select{ min-width:0; flex:1; }
+}

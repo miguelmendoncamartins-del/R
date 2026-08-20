@@ -1,0 +1,15 @@
+{
+  "name": "portal-aulas-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Suite de testes (Playwright) do Portal de Aulas — não faz parte do site publicado.",
+  "scripts": {
+    "test": "npm run test:paths && npm run test:e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:paths": "node tests/check-paths.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0"
+  }
+}
