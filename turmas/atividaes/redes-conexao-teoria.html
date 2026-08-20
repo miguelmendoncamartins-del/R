@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Conexão e Endereçamento IP: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#070c12; --panel:#0d1620; --panel2:#0a121a; --line:#1c2f40;
+    --green:#3aa0ff; --green-dim:#2b6ba3; --blood:#c1121f; --blood-bright:#ff5b4d;
+    --yellow:#e0c46a; --ink:#d6e2ec; --ink-dim:#6c8698;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050a10;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(58,160,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--green); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .eri-row{ display:flex; align-items:flex-start; gap:12px; }
+  .eri-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(58,160,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--green-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .eri-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--green);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:8px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--yellow); white-space:pre;
+  }
+  .speech-bubble code{ color:var(--yellow); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--yellow); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--green-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--green); background:rgba(58,160,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--green); color:var(--green); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,91,77,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--green); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--yellow); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04150c; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--green); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--yellow); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--green); border:1px solid var(--green-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(58,160,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  /* Celular: deixa a página rolar em vez de prender tudo numa tela só, e
+     tira padding/borda que só rouba espaço útil numa tela pequena. */
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'redes_conexao_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>REDES — CENTRAL DE REDES (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">12</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `redes_conexao_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Olá! Eu sou o <b>Nex</b>, técnico da Central de Redes. Antes de resolver chamados de verdade, preciso te ensinar como as redes se conectam fisicamente e como cada dispositivo recebe um endereço. Vamos começar pela <b>topologia</b>: o desenho de como os cabos ligam os dispositivos entre si.',
+      question: {
+        prompt: 'Numa topologia em ESTRELA, como os dispositivos se conectam entre si?',
+        options: [
+          'Todos se conectam a um ponto central (como um switch)',
+          'Um se conecta direto no outro, em fila',
+          'Todos formam um círculo fechado',
+          'Não existe cabo nenhum'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Na topologia estrela, cada dispositivo tem um cabo próprio até um ponto central — hoje, a mais usada em redes locais.'
+      }
+    },
+    {
+      story: 'Pra ligar os dispositivos, existem meios físicos diferentes. O <b>cabo par trançado</b> (com conector RJ45) é o mais comum em redes locais. Já a <b>fibra óptica</b> transmite luz em vez de eletricidade — por isso não sofre interferência elétrica e aguenta distâncias bem maiores.',
+      question: {
+        prompt: 'Você precisa ligar dois prédios que ficam a 2 km de distância, atravessando uma área com muita interferência elétrica de máquinas industriais. Qual meio físico resolve isso melhor?',
+        options: ['Fibra óptica', 'Cabo par trançado (UTP)', 'Bluetooth', 'Nenhum, todos são iguais'],
+        correctIndex: 0,
+        explanation: 'Correto! A fibra óptica transmite luz, não eletricidade — por isso não sofre interferência eletromagnética e alcança distâncias muito maiores.'
+      }
+    },
+    {
+      story: 'Nem toda conexão usa cabo. <b>Wi-Fi</b> (Wireless) conecta dispositivos numa área maior (uma casa, um andar inteiro), enquanto <b>Bluetooth</b> foi feito pra distâncias bem curtas, entre poucos dispositivos pessoais (fone, mouse, teclado).',
+      question: {
+        prompt: 'Você quer que todos os cômodos de uma casa de dois andares tenham sinal de rede sem fio, mas o Bluetooth do roteador nem cobre a sala inteira. Qual tecnologia sem fio tem alcance suficiente pra isso?',
+        options: ['Wi-Fi', 'Bluetooth', 'Os dois têm o mesmo alcance', 'Nenhum dos dois tem alcance'],
+        correctIndex: 0,
+        explanation: 'Isso! O Wi-Fi cobre distâncias bem maiores que o Bluetooth, que foi pensado pra conexões pessoais bem próximas.'
+      }
+    },
+    {
+      story: 'Chegou o primeiro conceito de "saída pra fora": o <b>gateway</b> (porta de saída padrão) é o dispositivo — geralmente o roteador — que permite que sua rede local converse com redes externas, como a internet.',
+      question: {
+        prompt: 'Um funcionário consegue acessar os arquivos compartilhados de outros computadores da empresa (rede local), mas nenhum site da internet abre. O que isso costuma indicar?',
+        options: [
+          'O gateway não está configurado corretamente',
+          'O dispositivo perdeu toda e qualquer conexão, inclusive local',
+          'Nada de errado — isso é comportamento normal',
+          'A internet está mais rápida que o normal'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Sem o gateway certo, o tráfego não sabe por onde sair da rede local — a comunicação interna continua funcionando, mas a externa não.'
+      }
+    },
+    {
+      story: 'Todo dispositivo numa rede IPv4 tem um endereço no formato de <b>4 números separados por ponto</b> (de 0 a 255 cada), tipo <code>192.168.1.10</code>. Cada um desses números é chamado de <b>octeto</b>.',
+      question: {
+        prompt: 'Olhando o endereço 10.0.0.5, quantos octetos (grupos de números separados por ponto) ele tem?',
+        options: ['4', '6', '8', '2'],
+        correctIndex: 0,
+        explanation: 'Isso! Um IPv4 sempre tem 4 octetos, cada um variando de 0 a 255.'
+      }
+    },
+    {
+      story: 'Algumas faixas de IP são reservadas pra uso <b>privado</b> (dentro de casas e empresas) e nunca aparecem direto na internet — a mais comum é <code>192.168.0.0</code> até <code>192.168.255.255</code>. Endereços públicos, como <code>8.8.8.8</code>, são únicos no mundo inteiro.',
+      question: {
+        prompt: 'Qual desses endereços pertence a uma faixa PRIVADA (de rede local)?',
+        options: ['192.168.44.201', '8.8.8.8', '200.150.1.1', '1.1.1.1'],
+        correctIndex: 0,
+        explanation: 'Correto! 192.168.x.x é uma das faixas reservadas pra redes privadas — nunca é único na internet, porque cada rede local usa a sua por dentro.'
+      }
+    },
+    {
+      story: 'O IPv4 tem um problema: só existem cerca de 4 bilhões de endereços possíveis, e eles já estão esgotando. Por isso foi criado o <b>IPv6</b>, com endereços bem maiores (em formato hexadecimal), garantindo endereços suficientes pra todos os dispositivos do mundo.',
+      question: {
+        prompt: 'As operadoras perceberam que estavam ficando sem endereços IPv4 novos pra distribuir aos clientes, com tantos dispositivos se conectando à internet. Qual solução resolveu esse problema de raiz?',
+        options: [
+          'A criação do IPv6, com uma quantidade de endereços muito maior',
+          'Aumentar a velocidade de transmissão do IPv4',
+          'Substituir todos os cabos de rede por fibra',
+          'Deixar os endereços mais fáceis de decorar'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! O IPv4 tem uma quantidade limitada de endereços, e o crescimento de dispositivos conectados esgotou essa faixa — daí a necessidade do IPv6.'
+      }
+    },
+    {
+      story: 'A <b>máscara de sub-rede</b> (tipo <code>255.255.255.0</code>) trabalha junto do IP: ela define quais bits do endereço identificam a REDE e quais identificam o HOST (o dispositivo específico dentro dela).',
+      question: {
+        prompt: 'Dois dispositivos têm o mesmo IP de rede, mas por causa da máscara de sub-rede configurada, o sistema entende que eles fazem parte de sub-redes diferentes e não se enxergam direto. O que a máscara de sub-rede está definindo nesse caso?',
+        options: [
+          'Quais bits do IP identificam a rede e quais identificam o host',
+          'Quem pode ou não ver o IP de outros dispositivos',
+          'A velocidade máxima da conexão',
+          'Qual dispositivo é o gateway'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! A máscara separa a parte "rede" da parte "host" do endereço IP — essencial pra saber quem está na mesma rede local.'
+      }
+    },
+    {
+      story: 'Uma forma mais curta de escrever a máscara é a notação <b>CIDR</b>: em vez de <code>255.255.255.0</code>, escrevemos <code>/24</code> — o número indica quantos bits (de 32 no total) pertencem à parte de rede.',
+      question: {
+        prompt: 'Numa notação CIDR como /16, o que o número 16 representa?',
+        options: [
+          'Quantos bits (de 32) identificam a parte de REDE do endereço',
+          'Quantos dispositivos cabem na rede',
+          'A velocidade máxima da rede',
+          'O número da porta usada'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! Assim como /24 usa 24 bits pra rede, /16 usa os primeiros 16 bits (dos 32 de um IPv4) pra identificar a rede — o resto identifica o host.'
+      }
+    },
+    {
+      story: 'Quando alguém configura um IP <b>manualmente</b> (estático) e escolhe, sem querer, o mesmo endereço que outro dispositivo já está usando, acontece um <b>conflito de IP</b> — geralmente um ou os dois dispositivos perdem a conexão, e o sistema costuma avisar sobre isso.',
+      question: {
+        prompt: 'Dois notebooks da mesma rede foram configurados manualmente, cada um sem saber do outro, com o IP 192.168.1.50. De repente os dois começam a cair da rede. O que está acontecendo?',
+        options: [
+          'Um conflito de IP — dois dispositivos com o mesmo endereço',
+          'Um cabo de rede rompido',
+          'Uma máscara de sub-rede muito grande',
+          'O uso de fibra óptica'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Dois dispositivos não podem ter o mesmo IP na mesma rede ao mesmo tempo — isso gera o conflito.'
+      }
+    },
+    {
+      story: 'Pra testar se um dispositivo está acessível na rede, usamos o comando <b><code>ping</code></b> no terminal: ele manda um sinal pro destino e espera a resposta, medindo se e quão rápido ela chega.',
+      question: {
+        prompt: 'Você quer saber rapidamente, pelo terminal, se um servidor está online e respondendo, antes de investigar mais a fundo. Qual comando você roda primeiro?',
+        options: ['ping', 'gateway', 'octeto', 'CIDR'],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! ping é o comando clássico pra testar conectividade básica com outro dispositivo.'
+      }
+    },
+    {
+      story: 'Quando o <code>ping</code> não é suficiente e você precisa saber POR ONDE (por quais roteadores) o tráfego está passando até chegar no destino, usa-se o <b><code>tracert</code></b> (Windows) ou <b><code>traceroute</code></b> (Linux/Mac) — ele mostra cada "salto" do caminho. Com isso, você já sabe o básico de conexão e endereçamento pra encarar os primeiros chamados da Central de Redes!',
+      question: {
+        prompt: 'O ping mostra que o servidor não está respondendo, e você quer descobrir em qual roteador do caminho o tráfego está travando. Qual comando mostra cada salto até o destino?',
+        options: ['tracert / traceroute', 'ping', 'ipconfig', 'DHCP'],
+        correctIndex: 0,
+        explanation: 'Correto! tracert (ou traceroute) revela cada salto da rota até o destino — útil pra descobrir ONDE o tráfego está travando.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Redes — Conexão e Endereçamento IP',
+      subtitle: 'Aula Teórica · Trilha Conexão e Endereçamento IP · Turma Sistemas',
+      capacidade: 'Identificar tipos e tecnologias de conexão a redes de computadores.',
+      steps: STEPS,
+      fileName: 'redes-conexao-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central de Redes: Conexões" no Portal de Aulas para os alunos resolverem chamados de verdade.'
+    });
+  };
+
+  // Mesmo esquema do generateSlidesForGestao acima: exposto sempre pra a aba
+  // "Gestão" poder chamar remotamente, num iframe oculto, e baixar um .txt
+  // com pergunta + resposta esperada de cada etapa — sem o professor precisar
+  // decorar as respostas ou abrir o módulo pra conferir.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Redes — Conexão e Endereçamento IP',
+      subtitle: 'Aula Teórica · Trilha Conexão e Endereçamento IP · Turma Sistemas',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'redes-conexao-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  // Ordem das perguntas embaralhada por aluno/tentativa — evita que a sequência
+  // fixa vire uma "lista de gabarito" compartilhada entre turmas.
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('redes_conexao_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Redes — Conexão e IP — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'eri-row';
+    row.innerHTML = `
+      <div class="eri-avatar">📡</div>
+      <div class="speech-bubble">
+        <span class="eri-name">Nex, Técnico da Central de Redes</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    // Embaralha a ordem de exibição pra resposta certa não cair sempre na letra A.
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Redes — Conexão e IP — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    // Só conta como concluída (e libera o resto da trilha/jogos) com pelo
+    // menos 80% de acerto — abaixo disso, fica só o convite pra tentar de novo.
+    // reviewOnly=true (reabrindo um módulo já concluído) só reexibe a tela
+    // de sucesso sem recalcular/regravar — sem isso, progresso salvo antes
+    // dessa regra existir (sem correctCount) seria rebaixado pra "não
+    // concluído" só por reabrir o módulo.
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Redes — Conexão e IP — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Conexão e Endereçamento IP concluídos!</h2>
+        <p>Você já conhece topologias, meios físicos, Wi-Fi/Bluetooth, gateway, IPv4/IPv6, máscara de sub-rede, CIDR, conflito de IP, ping e tracert.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra o módulo de prática da Central de Redes.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

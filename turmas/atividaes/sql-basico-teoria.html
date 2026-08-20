@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — SQL Básico: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#070c12; --panel:#0d1620; --panel2:#0a121a; --line:#1c2f40;
+    --green:#3aa0ff; --green-dim:#2b6ba3; --blood:#c1121f; --blood-bright:#ff5b4d;
+    --yellow:#e0c46a; --ink:#d6e2ec; --ink-dim:#6c8698;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050a10;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(58,160,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--green); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .eri-row{ display:flex; align-items:flex-start; gap:12px; }
+  .eri-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(58,160,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--green-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .eri-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--green);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:8px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--yellow); white-space:pre;
+  }
+  .speech-bubble code{ color:var(--yellow); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--yellow); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--green-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--green); background:rgba(58,160,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--green); color:var(--green); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,91,77,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--green); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--yellow); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04150c; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--green); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--yellow); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--green); border:1px solid var(--green-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(58,160,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  /* Celular: deixa a página rolar em vez de prender tudo numa tela só, e
+     tira padding/borda que só rouba espaço útil numa tela pequena. */
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'sql_basico_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>SQL — CENTRAL DE DADOS (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">11</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `sql_basico_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Olá! Eu sou a <b>Query</b>, a IA que cuida da <b>Central de Dados</b>. Antes de você começar a resolver chamados de verdade, preciso te ensinar o básico sobre onde esses dados moram: os <b>bancos de dados relacionais</b>, onde tudo fica guardado em tabelas — parecidas com planilhas.',
+      question: {
+        prompt: 'Você abre pela primeira vez a tabela "produtos" de um banco relacional. Como as informações de cada produto provavelmente estão organizadas ali dentro?',
+        options: [
+          'Em colunas fixas (nome, preço...) e uma linha para cada produto',
+          'Cada produto num arquivo de texto separado',
+          'Todas as informações do produto numa única célula',
+          'Os produtos organizados em pastas por ordem alfabética'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Num banco relacional, os dados ficam guardados em tabelas — parecidas com planilhas, com colunas fixas e uma linha por registro.'
+      }
+    },
+    {
+      story: 'Pensa numa tabela como uma planilha: cada <b>coluna</b> é um tipo de informação (nome, cargo, salário...) e cada <b>linha</b> é um registro completo — por exemplo, um funcionário específico com todos os seus dados.',
+      question: {
+        prompt: 'Numa tabela "produtos" com colunas nome, preco e estoque, o que representa a linha "Caneta, 2.50, 100"?',
+        options: [
+          'O registro completo de um produto: a caneta, com preço 2.50 e estoque 100',
+          'O nome da tabela',
+          'Uma coluna nova chamada "Caneta"',
+          'O banco de dados inteiro'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Cada linha é um registro — nesse caso, um produto específico com o valor de cada coluna preenchido.'
+      }
+    },
+    {
+      story: 'Toda tabela costuma ter uma coluna especial: a <b>chave primária</b> (primary key). Ela guarda um valor único para cada linha, tipo o "id" — nunca se repete, e serve pra identificar aquele registro sem confusão.',
+      question: {
+        prompt: 'Numa tabela "produtos" (id, nome, preco), por que dois produtos diferentes nunca podem ter o mesmo valor de "id"?',
+        options: [
+          'Porque id é a chave primária e precisa identificar cada linha de forma única',
+          'Porque só pode existir 1 produto cadastrado por vez',
+          'Porque o nome do produto também não pode repetir',
+          'Porque toda coluna numérica é única por padrão em SQL'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! A chave primária garante que cada linha tenha um identificador único — se repetisse, não daria pra distinguir os registros.'
+      }
+    },
+    {
+      story: 'Chegou o primeiro chamado: "preciso ver todos os dados da tabela". Pra isso existe o comando <b>SELECT</b>. Combinado com <code>*</code> (que significa "todas as colunas") e <code>FROM</code> (de qual tabela), ele busca tudo.<pre>SELECT * FROM funcionarios;</pre>',
+      question: {
+        prompt: 'Agora o chamado é sobre outra tabela: "preciso ver todos os dados de produtos". Qual comando resolve isso?',
+        options: ['SELECT * FROM produtos;', 'INSERT INTO produtos;', 'DELETE FROM produtos;', 'CREATE TABLE produtos;'],
+        correctIndex: 0,
+        explanation: 'Correto! SELECT * FROM busca todas as colunas de todas as linhas da tabela informada.'
+      }
+    },
+    {
+      story: 'Nem sempre você precisa de todas as colunas. Dá pra listar só as que interessam, separadas por vírgula, no lugar do <code>*</code>:<pre>SELECT nome, cargo FROM funcionarios;</pre>Isso traz só as colunas <code>nome</code> e <code>cargo</code> de cada linha.',
+      question: {
+        prompt: 'Você quer ver só as colunas "nome" e "preco" (nessa ordem) da tabela "produtos". Qual comando faz isso?',
+        options: [
+          'SELECT nome, preco FROM produtos;',
+          'SELECT preco; nome FROM produtos;',
+          'SELECT [nome][preco] FROM produtos;',
+          'SELECT nome + preco FROM produtos;'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! As colunas ficam separadas por vírgula, na ordem em que você quer que apareçam.'
+      }
+    },
+    {
+      story: 'E se o chamado pedir só ALGUMAS linhas, não todas? Aí entra o <b>WHERE</b>: ele filtra o resultado, mantendo só as linhas que atendem a uma condição.<pre>SELECT * FROM funcionarios WHERE departamento_id = 1;</pre>Isso traz só quem tem <code>departamento_id</code> igual a 1.',
+      question: {
+        prompt: 'Agora o chamado pede só os produtos da categoria "Eletrônicos". Qual comando faz esse filtro?',
+        options: [
+          'SELECT * FROM produtos WHERE categoria = \'Eletrônicos\';',
+          'SELECT * FROM produtos ORDER BY categoria;',
+          'SELECT * FROM produtos;',
+          'SELECT categoria FROM WHERE produtos;'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! WHERE define a condição que cada linha precisa cumprir para aparecer no resultado.'
+      }
+    },
+    {
+      story: 'O <code>WHERE</code> não serve só pra igualdade. Dá pra comparar números com <code>&gt;</code> (maior que), <code>&lt;</code> (menor que), <code>&gt;=</code> e <code>&lt;=</code>:<pre>SELECT nome FROM funcionarios WHERE salario &gt; 3000;</pre>Isso traz só quem ganha mais de 3000.',
+      question: {
+        prompt: 'Agora você quer listar os produtos com preço maior que 50. Qual condição usar depois do WHERE?',
+        options: ['preco > 50', 'preco = mais de 50', 'preco >> 50', 'preco ~ 50'],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! O operador > compara se o valor da coluna é maior que o número informado.'
+      }
+    },
+    {
+      story: 'Quer o resultado em uma ordem específica? Use <code>ORDER BY</code>. Por padrão ele ordena do menor pro maior; adicionando <code>DESC</code>, ele inverte, do maior pro menor.<pre>SELECT nome, salario FROM funcionarios ORDER BY salario DESC;</pre>',
+      question: {
+        prompt: 'Você quer listar os produtos do MAIS CARO para o MAIS BARATO. Qual comando faz isso?',
+        options: [
+          'SELECT * FROM produtos ORDER BY preco DESC;',
+          'SELECT * FROM produtos ORDER BY preco;',
+          'SELECT * FROM produtos ORDER BY preco ASC;',
+          'SELECT * FROM produtos ORDER BY MAX(preco);'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! DESC (descendente) ordena do maior para o menor. Sem ela (ou com ASC), a ordem é crescente.'
+      }
+    },
+    {
+      story: 'Até aqui só consultamos dados — mas às vezes o chamado pede pra <b>cadastrar</b> algo novo. Pra isso existe o <b>INSERT INTO</b>: você lista as colunas e depois os valores, na mesma ordem.<pre>INSERT INTO departamentos (id, nome)\nVALUES (4, "Financeiro");</pre>',
+      question: {
+        prompt: 'Chegou um chamado pra cadastrar um novo produto: id 10, nome "Mouse". Qual comando faz isso?',
+        options: [
+          'INSERT INTO produtos (id, nome) VALUES (10, "Mouse");',
+          'SELECT produtos (id, nome) VALUES (10, "Mouse");',
+          'UPDATE produtos SET id = 10, nome = "Mouse";',
+          'CREATE produtos (10, "Mouse");'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! INSERT INTO cria uma nova linha, com os valores que você especificar para cada coluna.'
+      }
+    },
+    {
+      story: 'Quando um dado já existe mas precisa mudar — tipo um salário que foi reajustado — usamos <b>UPDATE</b>. E aqui vai um alerta importante: <b>sempre use WHERE junto</b>, senão você muda a coluna em TODAS as linhas da tabela!<pre>UPDATE departamentos SET nome = "TI" WHERE id = 1;</pre>',
+      question: {
+        prompt: 'Um colega rodou <code>UPDATE produtos SET preco = 0;</code> sem WHERE, por engano. O que acontece com a tabela?',
+        options: [
+          'O preço de TODOS os produtos vira 0',
+          'Nada acontece, porque UPDATE sem WHERE não é executado',
+          'Só o primeiro produto cadastrado é alterado',
+          'A tabela "produtos" inteira é apagada'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Sem WHERE, o UPDATE aplica a mudança em toda linha da tabela — um erro comum e perigoso no dia a dia.'
+      }
+    },
+    {
+      story: 'Por fim, quando um registro precisa sumir de vez — tipo um funcionário que saiu da empresa — usamos <b>DELETE FROM</b>. O mesmo alerta vale aqui: sem <code>WHERE</code>, ele apaga a tabela inteira!<pre>DELETE FROM departamentos WHERE id = 3;</pre>Com isso você já tem o básico pra encarar os primeiros chamados de verdade na Central de Dados.',
+      question: {
+        prompt: 'Um funcionário com id 7 saiu da empresa e precisa ser removido da tabela "funcionarios". Qual comando faz isso corretamente?',
+        options: [
+          'DELETE FROM funcionarios WHERE id = 7;',
+          'DROP TABLE funcionarios;',
+          'DELETE funcionarios;',
+          'REMOVE FROM funcionarios WHERE id = 7;'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! DELETE FROM remove linhas — sempre acompanhado de WHERE para não apagar tudo.'
+      }
+    },
+    {
+      story: 'Beleza, você já sabe mexer numa tabela sozinha. Mas o próximo chamado pede um <b>relatório cruzando duas tabelas</b>: quem trabalha em qual departamento. Pra combinar linhas de tabelas diferentes que se relacionam, usamos o <b>JOIN</b>.',
+      question: {
+        prompt: 'Você precisa de um relatório que mostre, lado a lado, o nome de cada funcionário e o nome do departamento dele — informações que estão em duas tabelas diferentes. O que combina essas tabelas numa consulta só?',
+        options: ['JOIN', 'WHERE', 'GROUP BY', 'ORDER BY'],
+        correctIndex: 0,
+        explanation: 'Isso! JOIN junta linhas de tabelas diferentes com base numa condição de relacionamento.'
+      }
+    },
+    {
+      story: 'O JOIN precisa saber COMO as tabelas se relacionam. Isso vem depois do <code>ON</code>: normalmente comparando a chave estrangeira de uma tabela com a chave primária da outra.<pre>SELECT * FROM funcionarios\nJOIN departamentos ON funcionarios.departamento_id = departamentos.id;</pre>Aqui, <code>departamento_id</code> (em funcionarios) aponta pro <code>id</code> de departamentos — essa é a "chave estrangeira".',
+      question: {
+        prompt: 'Numa consulta com <code>JOIN clientes ON pedidos.cliente_id = clientes.id</code>, o que essa condição está comparando?',
+        options: [
+          'A chave estrangeira de uma tabela (cliente_id) com a chave primária da outra (id)',
+          'O nome das duas tabelas',
+          'A quantidade de linhas de cada tabela',
+          'O tipo de dado das colunas'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! O ON conecta as tabelas pela coluna que faz o relacionamento entre elas — geralmente uma chave estrangeira apontando pra uma chave primária.'
+      }
+    },
+    {
+      story: 'Repara: as duas tabelas têm uma coluna <code>nome</code> (nome do funcionário e nome do departamento). Se você escrever só <code>nome</code> num JOIN, o banco não sabe de qual tabela! Por isso usamos o prefixo <code>tabela.coluna</code> pra desempatar.<pre>SELECT funcionarios.nome, departamentos.nome\nFROM funcionarios JOIN departamentos ON funcionarios.departamento_id = departamentos.id;</pre>',
+      question: {
+        prompt: 'As tabelas "pedidos" e "clientes" têm, cada uma, uma coluna chamada "data". Como indicar no SELECT que você quer a "data" de "pedidos"?',
+        options: ['pedidos.data', 'Repetindo a coluna duas vezes', 'Não tem como, sempre dá erro', 'Usando WHERE data = pedidos'],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! O prefixo tabela.coluna resolve a ambiguidade quando duas tabelas compartilham um nome de coluna.'
+      }
+    },
+    {
+      story: 'JOIN combina normalmente com tudo que você já sabe: WHERE pra filtrar, ORDER BY pra ordenar. E pra não escrever o nome inteiro da tabela toda hora, dá pra dar um apelido curto (alias):<pre>SELECT f.nome, d.nome FROM funcionarios f\nJOIN departamentos d ON f.departamento_id = d.id\nWHERE d.nome = "Suporte";</pre>',
+      question: {
+        prompt: 'Numa consulta com <code>FROM pedidos p JOIN clientes c ON p.cliente_id = c.id</code>, o que são "p" e "c"?',
+        options: ['Apelidos (aliases) das tabelas pedidos e clientes', 'Nomes de colunas novas', 'Comandos SQL', 'Valores de filtro'],
+        correctIndex: 0,
+        explanation: 'Isso! Aliases são nomes curtos pra tabela, que deixam a consulta mais enxuta de escrever.'
+      }
+    },
+    {
+      story: 'Chegou outro tipo de chamado: "quantos funcionários tem no total?" e "qual a média salarial?". Pra isso existem as <b>funções de agregação</b> — elas resumem várias linhas num valor só. As mais usadas: <code>COUNT</code> (conta), <code>SUM</code> (soma) e <code>AVG</code> (média).<pre>SELECT COUNT(*) FROM funcionarios;</pre>',
+      question: {
+        prompt: 'Você quer saber quantos produtos existem cadastrados na tabela. Qual comando retorna esse número?',
+        options: ['SELECT COUNT(*) FROM produtos;', 'SELECT SUM(*) FROM produtos;', 'SELECT AVG(*) FROM produtos;', 'SELECT * FROM produtos ORDER BY id;'],
+        correctIndex: 0,
+        explanation: 'Isso! COUNT(*) conta o total de linhas retornadas pela consulta.'
+      }
+    },
+    {
+      story: '<code>SUM</code> soma valores numéricos de uma coluna, e <code>AVG</code> calcula a média.<pre>SELECT SUM(salario) FROM funcionarios;\nSELECT AVG(salario) FROM funcionarios;</pre>Repare que essas funções não retornam uma linha por funcionário — retornam UM valor só, resumindo a tabela inteira.',
+      question: {
+        prompt: 'Você quer saber a média de preço dos produtos cadastrados. Qual comando calcula isso?',
+        options: ['SELECT AVG(preco) FROM produtos;', 'SELECT SUM(preco) FROM produtos;', 'SELECT COUNT(preco) FROM produtos;', 'SELECT MAX(preco) FROM produtos;'],
+        correctIndex: 0,
+        explanation: 'Correto! AVG (average) calcula a média dos valores da coluna.'
+      }
+    },
+    {
+      story: 'E se o chamado pedir a média POR departamento, não da empresa toda? Aí entra o <code>GROUP BY</code>: ele agrupa as linhas que têm o mesmo valor numa coluna, e a função de agregação calcula um resultado PRA CADA grupo.<pre>SELECT departamento_id, AVG(salario)\nFROM funcionarios\nGROUP BY departamento_id;</pre>Isso traz uma linha por departamento, com a média salarial daquele grupo.',
+      question: {
+        prompt: 'Agora o pedido é a média de preço SEPARADA por categoria de produto, não da loja toda. Qual comando faz isso?',
+        options: [
+          'SELECT categoria, AVG(preco) FROM produtos GROUP BY categoria;',
+          'SELECT categoria, AVG(preco) FROM produtos ORDER BY categoria;',
+          'SELECT categoria, AVG(preco) FROM produtos WHERE categoria;',
+          'SELECT AVG(preco) FROM produtos;'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! GROUP BY separa as linhas em grupos, e a função de agregação calcula um valor por grupo.'
+      }
+    },
+    {
+      story: 'Última parte: além de SQL puro, o banco Oracle usa uma linguagem procedural chamada <b>PL/SQL</b>, que permite escrever lógica com variáveis, condições e laços — parecido com uma linguagem de programação de verdade. Todo código PL/SQL fica dentro de um <b>bloco anônimo</b>: <code>DECLARE</code> (opcional, pra variáveis), <code>BEGIN</code> (onde o código roda) e <code>END;</code>.<pre>DECLARE\n  -- variáveis aqui\nBEGIN\n  -- comandos aqui\nEND;</pre>',
+      question: {
+        prompt: 'No bloco abaixo, qual linha separa "onde as variáveis são declaradas" de "onde o código realmente executa"?<pre>DECLARE\n  v_x NUMBER;\nBEGIN\n  v_x := 10;\nEND;</pre>',
+        options: ['BEGIN', 'DECLARE', 'END;', 'v_x NUMBER;'],
+        correctIndex: 0,
+        explanation: 'Isso! BEGIN abre a parte executável do bloco — DECLARE (opcional) vem antes, só para variáveis.'
+      }
+    },
+    {
+      story: 'Dentro do DECLARE, você cria variáveis dando um nome e um tipo de dado — igual declarar uma variável em qualquer linguagem.<pre>DECLARE\n  v_salario NUMBER(10,2);\n  v_nome VARCHAR2(50);\nBEGIN\n  v_salario := 3000;\nEND;</pre>Repare no <code>:=</code> — é o operador de atribuição do PL/SQL (diferente do <code>=</code> de comparação).',
+      question: {
+        prompt: 'No trecho <code>v_total := 100;</code>, o que o operador <code>:=</code> está fazendo?',
+        options: [
+          'Atribuindo o valor 100 à variável v_total',
+          'Comparando se v_total é igual a 100',
+          'Comparando se v_total é diferente de 100',
+          'Somando 100 ao valor atual de v_total'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! := atribui um valor. O = sozinho é usado para comparação (como em WHERE ou IF).'
+      }
+    },
+    {
+      story: 'PL/SQL também tem estruturas de controle de fluxo, como em qualquer linguagem: <code>IF ... THEN ... ELSE ... END IF;</code> pra decisões, e <code>LOOP ... END LOOP;</code> pra repetições (geralmente com <code>EXIT WHEN condição;</code> pra parar).<pre>IF v_salario > 3000 THEN\n  v_nome := "Alto";\nELSE\n  v_nome := "Padrão";\nEND IF;</pre>',
+      question: {
+        prompt: 'Você quer que o PL/SQL escreva "Caro" se o preço for maior que 100, e "Barato" caso contrário. Qual estrutura permite isso?',
+        options: ['IF / THEN / ELSE / END IF', 'LOOP / END LOOP', 'DECLARE / BEGIN', 'GROUP BY'],
+        correctIndex: 0,
+        explanation: 'Isso! IF/THEN/ELSE/END IF é a estrutura condicional do PL/SQL, igual em outras linguagens de programação.'
+      }
+    },
+    {
+      story: 'Última dica: assim como em qualquer linguagem, escreva blocos PL/SQL com <b>identação clara</b> e nomes de variável que se entendam (tipo <code>v_salario</code>, e não <code>x</code>) — isso facilita muito quando outra pessoa (ou você mesmo, meses depois) precisar ler o código. Com isso, você já tem o panorama completo da capacidade: consultar, cruzar (JOIN), resumir (agregação) e programar lógica (PL/SQL) no banco de dados!',
+      question: {
+        prompt: 'Dois trechos fazem a mesma coisa: um usa <code>x := 100;</code>, o outro usa <code>v_estoque_minimo := 100;</code>. Qual a vantagem do segundo?',
+        options: [
+          'Deixa claro pra qualquer pessoa o que aquela variável representa',
+          'O banco de dados processa esse bloco mais rápido',
+          'É uma exigência da sintaxe do PL/SQL',
+          'Reduz o tamanho do arquivo salvo'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Nomes descritivos tornam o código mais legível e fácil de manter — uma boa prática em qualquer linguagem.'
+      }
+    }
+  ];
+
+  // Exposto sempre (não só quando o botão local aparece) pra a aba "Gestão"
+  // do portal da turma conseguir chamar isso remotamente, num iframe oculto,
+  // sem o professor precisar abrir o módulo pra achar o botão.
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'SQL e PL/SQL — Fundamentos, JOIN, Agregação e Blocos',
+      subtitle: 'Aula Teórica · Trilha SQL · Turma Sistemas',
+      capacidade: 'Aplicar linguagem para consulta, manipulação e controle do banco de dados.',
+      steps: STEPS,
+      fileName: 'sql-basico-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra os módulos de prática da trilha SQL no Portal de Aulas para os alunos aplicarem SQL, JOIN, agregação e PL/SQL de verdade.'
+    });
+  };
+
+  // Mesmo esquema do generateSlidesForGestao acima: exposto sempre pra a aba
+  // "Gestão" poder chamar remotamente, num iframe oculto, e baixar um .txt
+  // com pergunta + resposta esperada de cada etapa — sem o professor precisar
+  // decorar as respostas ou abrir o módulo pra conferir.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'SQL e PL/SQL — Fundamentos, JOIN, Agregação e Blocos',
+      subtitle: 'Aula Teórica · Trilha SQL · Turma Sistemas',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'sql-basico-teoria-gabarito.txt'
+    });
+  };
+
+  // Só o professor vê o botão de gerar slides aqui dentro do módulo — é
+  // material de apoio pra ele apresentar em aula, não faz parte da jornada
+  // do aluno.
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  // Ordem das perguntas embaralhada por aluno/tentativa — evita que a sequência
+  // fixa vire uma "lista de gabarito" compartilhada entre turmas.
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('sql_basico_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`SQL Básico — Teoria — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'eri-row';
+    row.innerHTML = `
+      <div class="eri-avatar">🤖</div>
+      <div class="speech-bubble">
+        <span class="eri-name">Query, IA da Central de Dados</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    // Embaralha a ordem de exibição pra resposta certa não cair sempre na letra A.
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`SQL Básico — Teoria — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    // Só conta como concluída (e libera o resto da trilha/jogos) com pelo
+    // menos 80% de acerto — abaixo disso, fica só o convite pra tentar de novo.
+    // reviewOnly=true (reabrindo um módulo já concluído) só reexibe a tela
+    // de sucesso sem recalcular/regravar — sem isso, progresso salvo antes
+    // dessa regra existir (sem correctCount) seria rebaixado pra "não
+    // concluído" só por reabrir o módulo.
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`SQL Básico — Teoria — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Fundamentos de SQL e PL/SQL concluídos!</h2>
+        <p>Você já conhece tabelas, colunas, chave primária, os comandos SELECT, WHERE, ORDER BY, INSERT, UPDATE e DELETE, JOIN entre tabelas, agregação com GROUP BY e os fundamentos de PL/SQL.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra os módulos de prática da Central de Dados.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

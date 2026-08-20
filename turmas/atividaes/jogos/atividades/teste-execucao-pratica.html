@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Jogos: Central de QA (Execução de Testes por Versão)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--blue); color:var(--blue); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,59,48,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(94,200,255,0.15); color:var(--blue); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--blue); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--gold); }
+
+  .explanation-box{
+    background:#060810; border:1px solid var(--blue-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--blue); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--gold); }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--gold); border:1px solid var(--blue-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(224,184,74,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--gold);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--gold); }
+
+  .options-panel{ background:var(--panel); border:1px solid var(--line); padding:10px 14px; flex-shrink:0; }
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); opacity:0.6; cursor:not-allowed; }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .console{
+    background:#050710; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--blue); font-weight:bold; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'teste_execucao_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JOGOS — CENTRAL DE QA (EXECUÇÃO DE TESTES POR VERSÃO)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🎫</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <div class="options-panel" id="optionsPanel"></div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `teste_execucao_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Só a equipe está jogando',
+      icon: '🧪',
+      explanation: 'A fase Alfa é testada só pela equipe interna, com partes do jogo ainda incompletas — o foco é caçar bugs estruturais, na fundação do jogo, antes de polir detalhes.',
+      desc: 'Chamado: "o jogo só está rodando aqui dentro da PixelForge, com a metade das fases nem implementada ainda, e a gente está achando problema grande na base do sistema de colisão." Em que fase do ciclo esse jogo está?',
+      hint: 'Pense em quem está jogando: só gente de dentro da empresa, ou já saiu pra fora?',
+      options: ['Alfa', 'Beta', 'Release Candidate', 'Gold'],
+      correctIndex: 0
+    },
+    {
+      id: 2,
+      title: 'Feedback de fora da empresa',
+      icon: '👥',
+      explanation: 'Na fase Beta, testers externos (convidados ou beta aberta) jogam a versão e mandam feedback de usabilidade — a experiência de quem não conhece os bastidores do jogo.',
+      desc: 'Chamado: "recebemos um monte de feedback de um grupo de jogadores de fora, reclamando que os controles do jogo estão confusos." De qual fase vem esse tipo de retorno?',
+      hint: 'Pense em quem está mandando esse feedback: time interno, ou gente de fora testando pela primeira vez?',
+      options: ['Beta', 'Alfa', 'Release Candidate', 'Gold'],
+      correctIndex: 0
+    },
+    {
+      id: 3,
+      title: 'Só bug crítico segura o lançamento',
+      icon: '🚦',
+      explanation: 'Na Release Candidate, a régua de qualidade sobe: só um bug crítico (que trava o jogo, corrompe dados etc.) pode segurar o lançamento — ajustes pequenos e cosméticos não seguram mais nada.',
+      desc: 'Chamado: "nessa fase, a diretoria só aceita atrasar o lançamento se aparecer um bug crítico — ajuste visual pequeno não segura mais nada." Que fase é essa?',
+      hint: 'Pense em qual fase já está tão perto do lançamento que só um problema realmente grave consegue frear.',
+      options: ['Release Candidate', 'Alfa', 'Beta', 'Gold'],
+      correctIndex: 0
+    },
+    {
+      id: 4,
+      title: 'Aprovado, pronto pra loja',
+      icon: '🏅',
+      explanation: 'A versão Gold é a final, já aprovada em todos os testes, pronta pra ser distribuída/publicada pros jogadores de verdade — o fim do ciclo de versões.',
+      desc: 'Chamado: "essa versão já passou em todos os testes e está pronta pra subir pra loja." Qual é o nome dessa versão?',
+      hint: 'Pense na fase que marca o fim do ciclo, quando não existe mais "próxima fase" antes do jogador comum.',
+      options: ['Gold', 'Alfa', 'Beta', 'Release Candidate'],
+      correctIndex: 0
+    },
+    {
+      id: 5,
+      title: 'Rodando os testes sozinho',
+      icon: '⚙️',
+      explanation: 'Um framework de teste automatiza a execução e o registro dos testes, sem precisar de uma pessoa clicando manualmente em cada botão toda vez que o código muda.',
+      desc: 'Chamado: "em vez de clicar em cada botão do jogo toda vez que o código muda, a equipe quer uma ferramenta que rode os testes sozinha e já mostre o que passou e o que falhou." O que a equipe deve usar?',
+      hint: 'Pense em algo que roda os testes por conta própria, sem depender de clique manual repetido.',
+      options: ['Um framework de teste', 'Um roteiro de execução em papel', 'A versão Gold do jogo', 'Um teste de mesa'],
+      correctIndex: 0
+    },
+    {
+      id: 6,
+      title: 'Testando em cima de dados reais',
+      icon: '⚠️',
+      explanation: 'O ambiente de testes deve ficar separado do ambiente de produção (o que os jogadores reais usam) — testar em cima de contas e dados reais arrisca corromper o progresso de gente de verdade.',
+      desc: 'Chamado: "o time de QA está rodando os testes da nova funcionalidade usando o mesmo banco de dados e as mesmas contas dos jogadores reais do jogo." Qual é o problema dessa prática?',
+      hint: 'Pense em quem pode sair prejudicado se um teste corromper dados por engano — e onde esses dados deveriam estar guardados.',
+      options: [
+        'O ambiente de teste deveria ser separado da produção, com dados próprios — não usar contas/dados reais de jogadores',
+        'Não tem problema nenhum, é assim que todo estúdio testa',
+        'O problema é só de desempenho, sem risco pros dados dos jogadores',
+        'Isso só seria um problema se o jogo já estivesse na versão Gold'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 7,
+      title: 'Cada um testou de um jeito',
+      icon: '🧭',
+      explanation: 'Um roteiro de execução reproduzível define passos claros e numa ordem fixa, pra qualquer pessoa do time chegar ao mesmo resultado testando o mesmo caso.',
+      desc: 'Chamado: "dois testadores testaram o mesmo caso, cada um seguindo uma ordem de passos diferente, e chegaram a resultados diferentes." O que está faltando nesse processo?',
+      hint: 'Pense no que garante que duas pessoas diferentes, testando o mesmo caso, sigam exatamente os mesmos passos.',
+      options: [
+        'Um roteiro de execução reproduzível, com passos e ordem fixos pra qualquer pessoa do time',
+        'Mais testadores fazendo o mesmo teste ao mesmo tempo',
+        'Trocar o framework de teste usado pela equipe',
+        'Pular direto pra versão Gold'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 8,
+      title: 'Corrigiu, mas ninguém testou de novo',
+      icon: '🔁',
+      explanation: 'O reteste consiste em rodar de novo o MESMO caso de teste que originalmente encontrou o bug, pra confirmar que ele realmente sumiu depois da correção.',
+      desc: 'Chamado: "o bug foi corrigido ontem, mas ninguém rodou de novo o caso de teste que encontrou aquele problema originalmente." O que está faltando?',
+      hint: 'Pense no que confirma, de fato, que um bug corrigido não voltou — só olhar o código já basta?',
+      options: [
+        'O reteste — rodar de novo o mesmo caso de teste pra confirmar que o bug sumiu',
+        'Nada, corrigir o código já garante que o bug nunca mais volta',
+        'Escrever um roteiro de execução novo do zero',
+        'Avançar direto pra versão Gold'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 9,
+      title: 'Quando dá pra avançar de fase?',
+      icon: '🚪',
+      explanation: 'Um critério de avanço (gate de qualidade) define, com antecedência, quais condições precisam estar cumpridas antes de mudar de uma fase pra outra — evitando avançar cedo demais com problemas sérios em aberto.',
+      desc: 'Chamado: "a equipe quer saber se já pode avançar da fase Beta pra Release Candidate, mas ninguém combinou quais condições precisam estar OK antes disso." O que está faltando?',
+      hint: 'Pense no que evita que a decisão de "mudar de fase" seja tomada só no feeling, sem nenhum critério combinado antes.',
+      options: [
+        'Um critério de avanço entre versões (gate de qualidade) definido com antecedência',
+        'Voltar o jogo pra fase Alfa e recomeçar tudo',
+        'Pular direto pra versão Gold sem passar pela Release Candidate',
+        'Nenhum critério é necessário, a decisão pode ser aleatória'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 10,
+      title: 'BOSS FINAL: bug crítico na Release Candidate',
+      icon: '🚨',
+      explanation: 'Um bug crítico encontrado na Release Candidate não pode ser ignorado: o caminho certo é corrigir o problema e rodar o reteste antes de avançar — nunca promover pra Gold com um bug crítico ainda em aberto.',
+      desc: 'Chamado urgente: durante a fase Release Candidate, o time encontrou um bug crítico que corrompe o save do jogador. A diretoria pergunta: seguir pro Gold mesmo assim, ou corrigir e testar de novo antes? O que a equipe deve fazer?',
+      hint: 'Lembre da definição de bug crítico na Release Candidate — ele é do tipo que trava um lançamento, ou do tipo que passa despercebido?',
+      options: [
+        'Corrigir o bug crítico e rodar o reteste antes de avançar pra Gold',
+        'Ignorar o bug e lançar a versão Gold assim mesmo, já que está quase pronta',
+        'Voltar direto pra fase Alfa e recomeçar o jogo do zero',
+        'Publicar a versão Gold e corrigir o bug só depois, silenciosamente'
+      ],
+      correctIndex: 0
+    }
+  ];
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos: Central de QA — Execução de Testes por Versão',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        options: c.options,
+        correctIndex: c.correctIndex,
+        answer: c.options[c.correctIndex]
+      })),
+      fileName: 'teste-execucao-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const optionsPanel = document.getElementById('optionsPanel');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🎫' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function renderOptions(challenge, alreadyDone) {
+    optionsPanel.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D'];
+    const wrongTried = new Set();
+
+    const order = challenge.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(challenge.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = challenge.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      if (alreadyDone) {
+        opt.classList.add('disabled');
+        if (pos === correctPos) opt.classList.add('correct');
+      } else {
+        opt.addEventListener('click', () => handleAnswer(challenge, pos, opt));
+      }
+      optionsPanel.appendChild(opt);
+    });
+
+    function handleAnswer(challenge, idx, opt) {
+      if (idx === correctPos) {
+        optionsPanel.querySelectorAll('.option').forEach(el => el.classList.add('disabled'));
+        opt.classList.add('correct');
+
+        completed.add(challenge.id);
+        saveCompleted(completed);
+        ticketStatusEl.textContent = 'RESOLVIDO';
+        ticketStatusEl.classList.add('done');
+        ticketStatusEl.classList.remove('pending');
+
+        const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+        if (isLast) {
+          logConsole('🏆 Chamado resolvido! Você concluiu todos os chamados de execução de testes por versão!', 'success');
+        } else {
+          logConsole('✅ Chamado resolvido! Próximo chamado liberado.', 'success');
+          btnNext.style.display = 'inline-block';
+        }
+        renderSidebar();
+
+        if (typeof window.reportActivity === 'function') {
+          window.reportActivity(
+            'teste_execucao_pratica',
+            `Testes de Jogos — Execução por Versão — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+            { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+          );
+        }
+      } else {
+        wrongTried.add(idx);
+        opt.classList.add('incorrect');
+        logConsole('❌ Não é essa. Tente outra opção — a dica pode ajudar.', 'fail');
+      }
+    }
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) logConsole('Você já resolveu este chamado. Pode revisar as opções.', 'info');
+    renderOptions(challenge, alreadyDone);
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'teste_execucao_pratica',
+        `Testes de Jogos — Execução por Versão — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

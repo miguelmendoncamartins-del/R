@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Diagnóstico de Problemas de Rede: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#070c12; --panel:#0d1620; --panel2:#0a121a; --line:#1c2f40;
+    --green:#3aa0ff; --green-dim:#2b6ba3; --blood:#c1121f; --blood-bright:#ff5b4d;
+    --yellow:#e0c46a; --ink:#d6e2ec; --ink-dim:#6c8698;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050a10;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(58,160,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--green); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .eri-row{ display:flex; align-items:flex-start; gap:12px; }
+  .eri-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(58,160,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--green-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .eri-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--green);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:8px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--yellow); white-space:pre;
+  }
+  .speech-bubble code{ color:var(--yellow); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--yellow); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--green-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--green); background:rgba(58,160,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--green); color:var(--green); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,91,77,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--green); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--yellow); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04150c; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--green); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--yellow); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--green); border:1px solid var(--green-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(58,160,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'redes_resolucao_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>REDES — CENTRAL DE REDES (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">8</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `redes_resolucao_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'De volta! Eu sou o <b>Nex</b> de novo. Agora vamos falar de <b>diagnóstico de problemas</b>: quando uma rede para de funcionar, existe um jeito sistemático de descobrir o motivo, em vez de tentar tudo aleatoriamente. A regra de ouro: comece SEMPRE checando a <b>camada física</b> antes da lógica.',
+      question: {
+        prompt: 'Um técnico recebe um chamado de "sem internet" e já vai direto reconfigurar IP e DNS, sem checar se o cabo está conectado. Por que começar pela camada FÍSICA (cabos, luzes da interface) costuma ser mais eficiente?',
+        options: [
+          'Porque é mais rápido descartar (ou confirmar) um problema físico simples antes de investigar configurações',
+          'Porque a camada física nunca dá problema',
+          'Porque a camada lógica não existe de verdade',
+          'Não importa a ordem, dá no mesmo'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Checar o básico físico primeiro evita perder tempo mexendo em configurações quando o problema é, por exemplo, um cabo solto.'
+      }
+    },
+    {
+      story: 'Na camada física, os primeiros sinais a checar são: o cabo está bem conectado nas duas pontas? As <b>luzes da interface de rede</b> (link/atividade) estão acesas? Se a luz de link está apagada, muito provavelmente o problema é físico: cabo rompido, mal encaixado, ou porta com defeito.',
+      question: {
+        prompt: 'Durante um chamado de "PC sem rede", você olha a placa de rede e percebe que a luz de "link" está apagada. O que isso geralmente indica?',
+        options: [
+          'Um problema físico — cabo desconectado, rompido ou porta com defeito',
+          'Um conflito de IP',
+          'Uma máscara de sub-rede errada',
+          'Um problema de DNS'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! A luz de link apagada é um forte sinal de que não existe conexão física estabelecida — comece por aí.'
+      }
+    },
+    {
+      story: 'Se a camada física está OK (cabo conectado, luz acesa), o próximo passo é checar a <b>camada lógica</b>: o dispositivo tem um endereço IP válido? A máscara de sub-rede está certa? O gateway está configurado?',
+      question: {
+        prompt: 'Você já confirmou que o cabo está bem conectado e a luz de link está acesa, mas o usuário continua sem acessar nada. Qual é o próximo passo do diagnóstico?',
+        options: [
+          'Checar a configuração lógica: IP, máscara e gateway',
+          'Trocar o cabo de novo',
+          'Reinstalar o sistema operacional',
+          'Ignorar o problema'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Depois de confirmar que o físico está OK, o próximo passo natural é investigar a configuração lógica do dispositivo.'
+      }
+    },
+    {
+      story: 'Pra ver a configuração de rede ATUAL de um dispositivo (IP, máscara, gateway), usamos o comando <code>ipconfig</code> (Windows) ou <code>ifconfig</code>/<code>ip addr</code> (Linux) no terminal — o primeiro lugar a olhar quando o problema parece ser de configuração.',
+      question: {
+        prompt: 'Você suspeita que o problema é de configuração e quer ver rapidamente, pelo terminal de um PC Windows, qual IP, máscara e gateway estão sendo usados agora, sem abrir nenhum programa gráfico. Qual comando você usa?',
+        options: ['ipconfig', 'tracert', 'ping', 'CIDR'],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! ipconfig (ou ifconfig no Linux) exibe a configuração de rede que o dispositivo está usando agora.'
+      }
+    },
+    {
+      story: 'Um dos sintomas mais claros de problema lógico é o <b>conflito de IP</b>: o sistema costuma mostrar uma mensagem avisando que o endereço já está em uso por outro dispositivo — geralmente causado por configuração manual (estática) mal feita.',
+      question: {
+        prompt: 'Um usuário liga reclamando que, do nada, o Windows mostrou um aviso dizendo que o endereço IP dele já está em uso por outro dispositivo na rede. Que tipo de problema é esse?',
+        options: [
+          'Conflito de IP',
+          'A luz de link apagada',
+          'O cabo de rede rompido',
+          'Um site específico fora do ar'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! O próprio sistema operacional geralmente detecta e avisa sobre o conflito de endereço IP.'
+      }
+    },
+    {
+      story: 'Outro sintoma lógico comum: o dispositivo consegue "falar" com ALGUNS hosts da rede, mas não com outros que deveriam estar acessíveis. Isso costuma apontar pra uma <b>máscara de sub-rede configurada errada</b> — o dispositivo "acha" que está numa rede diferente da real.',
+      question: {
+        prompt: 'Um PC consegue acessar alguns hosts da rede, mas não outros que deveriam estar no mesmo alcance. O que isso costuma indicar?',
+        options: [
+          'Máscara de sub-rede configurada errada',
+          'Cabo de rede rompido',
+          'Switch sem energia',
+          'Bluetooth desligado'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Uma máscara errada faz o dispositivo calcular "quem está na minha rede" de forma equivocada, cortando acesso a hosts que deveriam estar alcançáveis.'
+      }
+    },
+    {
+      story: 'Quando você suspeita de um problema físico (tipo um cabo), o jeito mais confiável de confirmar é <b>isolar a variável</b>: testar com outro cabo ou outra porta que você já SABE que funcionam. Se o problema sumir, era o cabo/porta original; se continuar, o problema está em outro lugar.',
+      question: {
+        prompt: 'Qual é a forma mais confiável de confirmar se um problema é realmente do cabo?',
+        options: [
+          'Testar com outro cabo/porta conhecidos como bons, e comparar o resultado',
+          'Reiniciar o computador várias vezes',
+          'Trocar o sistema operacional',
+          'Ignorar e esperar resolver sozinho'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! Isolar a variável suspeita (trocando só o cabo, mantendo tudo o resto igual) é o jeito mais confiável de confirmar a causa.'
+      }
+    },
+    {
+      story: 'Por fim, depois de resolver um chamado, vale <b>documentar</b> o que era o problema e como foi resolvido — economiza um tempo enorme da próxima vez que algo parecido acontecer, seja com você ou com outra pessoa da equipe. Com isso, você já tem o método completo: físico → lógico → isolar → documentar.',
+      question: {
+        prompt: 'Meses depois, o mesmo tipo de chamado (luz de link apagada por mau contato) aparece de novo, com outro técnico, e é resolvido em metade do tempo porque já existia um registro parecido de uma vez anterior. O que possibilitou isso?',
+        options: [
+          'Ter documentado a causa e a solução daquele chamado anterior',
+          'Ser obrigatório por lei documentar chamados',
+          'A rede ter ficado mais rápida com o tempo',
+          'Não ter sido necessário testar a solução dessa vez'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! Documentação é conhecimento reaproveitável — evita reinventar o diagnóstico do zero na próxima vez.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Redes — Diagnóstico de Problemas',
+      subtitle: 'Aula Teórica · Trilha Resolução de Problemas de Rede · Turma Sistemas',
+      capacidade: 'Resolução de problemas complexos.',
+      steps: STEPS,
+      fileName: 'redes-resolucao-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central de Redes: Diagnóstico" no Portal de Aulas para os alunos resolverem chamados de verdade.'
+    });
+  };
+
+  // Mesmo esquema do generateSlidesForGestao acima: exposto sempre pra a aba
+  // "Gestão" poder chamar remotamente, num iframe oculto, e baixar um .txt
+  // com pergunta + resposta esperada de cada etapa — sem o professor precisar
+  // decorar as respostas ou abrir o módulo pra conferir.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Redes — Diagnóstico de Problemas',
+      subtitle: 'Aula Teórica · Trilha Resolução de Problemas de Rede · Turma Sistemas',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'redes-resolucao-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  // Ordem das perguntas embaralhada por aluno/tentativa — evita que a sequência
+  // fixa vire uma "lista de gabarito" compartilhada entre turmas.
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('redes_resolucao_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Redes — Diagnóstico — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'eri-row';
+    row.innerHTML = `
+      <div class="eri-avatar">🩺</div>
+      <div class="speech-bubble">
+        <span class="eri-name">Nex, Técnico da Central de Redes</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    // Embaralha a ordem de exibição pra resposta certa não cair sempre na letra A.
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Redes — Diagnóstico — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    // Só conta como concluída (e libera o resto da trilha/jogos) com pelo
+    // menos 80% de acerto — abaixo disso, fica só o convite pra tentar de novo.
+    // reviewOnly=true (reabrindo um módulo já concluído) só reexibe a tela
+    // de sucesso sem recalcular/regravar — sem isso, progresso salvo antes
+    // dessa regra existir (sem correctCount) seria rebaixado pra "não
+    // concluído" só por reabrir o módulo.
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Redes — Diagnóstico — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Diagnóstico de Problemas de Rede concluído!</h2>
+        <p>Você já conhece o método físico → lógico → isolar variável → documentar, e os sintomas típicos de cabo rompido, conflito de IP e máscara errada.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra o módulo de prática da Central de Redes.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Jogos: Central de Suporte a Devs</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050805;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(124,255,63,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--green); color:var(--green); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,59,48,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(124,255,63,0.15); color:var(--green); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--green); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--yellow); }
+
+  .explanation-box{
+    background:#050805; border:1px solid var(--green-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--green); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--yellow); }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--green-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(212,200,106,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--yellow);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--yellow); }
+
+  .options-panel{ background:var(--panel); border:1px solid var(--line); padding:10px 14px; flex-shrink:0; }
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--green-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--green); background:rgba(124,255,63,0.08); }
+  .option.correct .opt-letter{ border-color:var(--green); color:var(--green); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); opacity:0.6; cursor:not-allowed; }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04220a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .console{
+    background:#060806; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--green); font-weight:bold; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'fund_ambiente_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JOGOS — CENTRAL DE SUPORTE (AMBIENTE E FERRAMENTAS)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🎫</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <div class="options-panel" id="optionsPanel"></div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `fund_ambiente_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Escolha a plataforma certa',
+      icon: '🌐',
+      explanation: 'Cada plataforma favorece linguagens diferentes: JavaScript roda direto no navegador sem instalação; C# é o padrão da Unity; GDScript é a linguagem própria da Godot; C++ domina engines de alta performance offline.',
+      desc: 'Um estúdio quer lançar um <b>jogo 2D leve que rode direto no navegador</b>, sem o jogador precisar instalar nada. Qual linguagem combina melhor com essa plataforma?',
+      hint: 'Pense em qual dessas linguagens já roda nativamente dentro de qualquer navegador, sem instalação.',
+      options: ['JavaScript', 'C++', 'C# (Unity)', 'Nenhuma linguagem roda em navegador'],
+      correctIndex: 0
+    },
+    {
+      id: 2,
+      title: 'Diagnostique o erro de instalação',
+      icon: '⚙️',
+      explanation: 'Quando o terminal não reconhece o comando de uma ferramenta recém-instalada, o problema costuma estar na configuração do ambiente — SDK não instalado corretamente ou variável de ambiente/PATH que não aponta pra ferramenta.',
+      desc: 'Um aluno digita o comando da engine no terminal e recebe "comando não reconhecido", mesmo jurando que instalou tudo. Qual é a causa mais provável?',
+      hint: 'Não é o teclado, nem o comando errado — pense no que liga o terminal à ferramenta instalada.',
+      options: [
+        'O ambiente de desenvolvimento (SDK/variável de ambiente) não está configurado corretamente',
+        'O monitor está com resolução baixa',
+        'O jogo já foi publicado, então não precisa mais do comando',
+        'O Wi-Fi da escola caiu'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 3,
+      title: 'Editor ou compilador?',
+      icon: '🖊️',
+      explanation: 'O editor de código ajuda a ESCREVER (destaque de sintaxe, autocomplete), mas quem verifica se o código realmente funciona — e aponta erros — é o compilador/interpretador, ao executar o programa.',
+      desc: 'Um chamado descreve: "o editor não sinalizou nenhum erro, mas ao rodar o jogo apareceu uma mensagem de erro de sintaxe". O que explica isso?',
+      hint: 'Pense em quem realmente "lê e executa" o código, e não só exibe o texto colorido.',
+      options: [
+        'É o compilador/interpretador que processa o código de verdade e aponta os erros ao executar',
+        'O editor de código está com bug e precisa ser reinstalado',
+        'Erros de sintaxe nunca acontecem em jogos',
+        'O erro é do sistema operacional, não do código'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 4,
+      title: 'Engine própria ou pronta?',
+      icon: '🎮',
+      explanation: 'Engines prontas (Godot, Unity, Unreal) já trazem sistemas de renderização, física e áudio testados — poupando tempo enorme comparado a construir tudo isso do zero pra cada projeto.',
+      desc: 'Uma equipe pequena, com prazo apertado, quer lançar um jogo 2D e está decidindo entre usar uma engine pronta ou programar o motor gráfico e de física do zero. O que é mais indicado nesse cenário?',
+      hint: 'Pense no tempo que cada abordagem consome — e no que a maioria dos estúdios reais faz.',
+      options: [
+        'Usar uma engine pronta, que já resolve renderização, física e áudio',
+        'Programar tudo do zero, mesmo com prazo apertado',
+        'Não faz diferença nenhuma pro prazo do projeto',
+        'É proibido usar engines prontas em jogos comerciais'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 5,
+      title: 'Biblioteca pronta ou do zero?',
+      icon: '📦',
+      explanation: 'Bibliotecas de jogos 2D oferecem sistemas prontos (partículas, física de colisão, animação de sprite) para importar no projeto, evitando reescrever algo que a comunidade já testou e mantém.',
+      desc: 'Uma desenvolvedora quer um sistema de partículas (poeira, fumaça, faíscas) pro jogo dela e não tem tempo de escrever esse sistema do zero. O que ela deve buscar?',
+      hint: 'Pense em "código de terceiros pronto pra importar", não em escrever tudo na mão.',
+      options: [
+        'Uma biblioteca pronta de efeitos/partículas para jogos 2D',
+        'Trocar toda a linguagem de programação do projeto',
+        'Reinstalar o sistema operacional',
+        'Desistir do efeito visual'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 6,
+      title: 'Falta uma peça no "aquário"?',
+      icon: '🧩',
+      explanation: 'Um jogo digital 2D nasce da junção entre código, assets (sprites, sons, cenários) e um motor/engine. Ter só a arte pronta não é suficiente — sem a lógica de programação, nada na tela reage ou se move.',
+      desc: 'Um colega terminou todos os sprites e sons do jogo e acha que já está quase pronto, só falta "juntar tudo". Ele esqueceu de uma peça essencial. Qual?',
+      hint: 'Pense no que faz os elementos da tela reagirem e se mexerem, não só existirem parados.',
+      options: [
+        'O código — a lógica de programação que dá vida e reação aos elementos',
+        'Mais sprites, sempre cabe mais arte',
+        'Um nome mais criativo pro jogo',
+        'Nada, arte e som já bastam pra um jogo funcionar'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 7,
+      title: 'PATH apontando pro lugar errado',
+      icon: '🧭',
+      explanation: 'Quando existem múltiplas versões de uma ferramenta instaladas, a variável de ambiente PATH decide qual pasta o terminal consulta primeiro. Se ela aponta pra uma versão antiga, é essa que roda — mesmo com a versão nova instalada.',
+      desc: 'Um chamado descreve: "instalei a versão nova da engine, mas o terminal continua rodando a versão antiga, como se a nova nem existisse". Qual é a causa mais provável?',
+      hint: 'Pense em qual configuração do sistema decide "qual pasta o terminal encontra primeiro" quando há mais de uma versão instalada.',
+      options: [
+        'A variável de ambiente PATH ainda aponta primeiro pra pasta da versão antiga',
+        'A versão nova da engine está corrompida',
+        'O terminal só consegue rodar uma versão por vez, escolhida aleatoriamente',
+        'É preciso trocar de sistema operacional'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 8,
+      title: 'Extensões que aceleram o código',
+      icon: '🧷',
+      explanation: 'O editor de código pode ganhar extensões (como autocomplete/IntelliSense) que sugerem código enquanto você digita. Isso é um recurso do editor, diferente do compilador/interpretador, que só entra em ação pra processar e executar o código.',
+      desc: 'Um chamado reclama: "preciso digitar cada função inteira na mão, sem nenhuma sugestão automática — está lento". O que resolve isso?',
+      hint: 'Pense em ferramentas que se instalam DENTRO do editor pra ajudar a escrever, e não no compilador.',
+      options: [
+        'Instalar uma extensão de autocomplete/IntelliSense no editor de código',
+        'Trocar o compilador da engine',
+        'Desligar o autocomplete, ele sempre atrapalha',
+        'Isso não tem solução, é assim que programar funciona'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 9,
+      title: 'Motor pesado pra jogo simples',
+      icon: '⚖️',
+      explanation: 'A escolha de engine/linguagem deve considerar a complexidade real do projeto e a plataforma-alvo. Uma engine de alta performance voltada a jogos 3D pesados pode exigir um aprendizado desproporcional pra um jogo 2D casual simples.',
+      desc: 'Uma equipe escolheu uma engine de alta performance (voltada a jogos 3D pesados) pra fazer um jogo 2D casual simples, e o tempo de aprendizado da ferramenta está travando o projeto todo. O que a equipe deveria reavaliar?',
+      hint: 'Pense no equilíbrio entre a complexidade da engine escolhida e a complexidade real do que está sendo produzido.',
+      options: [
+        'Se a engine escolhida é proporcional à complexidade e plataforma do projeto, ou se uma opção mais leve serviria melhor',
+        'Nada, quanto mais robusta a engine, sempre melhor, não importa o projeto',
+        'Trocar toda a equipe do projeto',
+        'Abandonar o uso de qualquer engine e programar tudo do zero'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 10,
+      title: 'Onde entra o SDK?',
+      icon: '🧰',
+      explanation: 'Instalar a engine não é a mesma coisa que instalar o SDK da linguagem de programação escolhida. O SDK é quem fornece as ferramentas pra compilar/rodar código naquela linguagem — sem ele, o projeto não compila mesmo com a engine instalada.',
+      desc: 'Um aluno instalou a engine, mas o projeto não compila, com uma mensagem de que a linguagem escolhida não foi encontrada no ambiente. O que provavelmente falta?',
+      hint: 'Pense na diferença entre "a engine que você abre" e "o que efetivamente compila a linguagem por trás dela".',
+      options: [
+        'Instalar e configurar o SDK da linguagem de programação escolhida, separado da engine',
+        'Reinstalar a engine do zero, ela deve estar corrompida',
+        'Trocar de computador',
+        'Isso é normal, engines não precisam de SDK nenhum'
+      ],
+      correctIndex: 0
+    }
+  ];
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos: Central de Suporte a Devs — Ambiente e Ferramentas',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        options: c.options,
+        correctIndex: c.correctIndex,
+        answer: c.options[c.correctIndex]
+      })),
+      fileName: 'fund-ambiente-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const optionsPanel = document.getElementById('optionsPanel');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🎫' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function renderOptions(challenge, alreadyDone) {
+    optionsPanel.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D'];
+    const wrongTried = new Set();
+
+    const order = challenge.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(challenge.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = challenge.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      if (alreadyDone) {
+        opt.classList.add('disabled');
+        if (pos === correctPos) opt.classList.add('correct');
+      } else {
+        opt.addEventListener('click', () => handleAnswer(challenge, pos, opt));
+      }
+      optionsPanel.appendChild(opt);
+    });
+
+    function handleAnswer(challenge, idx, opt) {
+      if (idx === correctPos) {
+        optionsPanel.querySelectorAll('.option').forEach(el => el.classList.add('disabled'));
+        opt.classList.add('correct');
+
+        completed.add(challenge.id);
+        saveCompleted(completed);
+        ticketStatusEl.textContent = 'RESOLVIDO';
+        ticketStatusEl.classList.add('done');
+        ticketStatusEl.classList.remove('pending');
+
+        const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+        if (isLast) {
+          logConsole('🏆 Chamado resolvido! Você concluiu todos os chamados de ambiente e ferramentas!', 'success');
+        } else {
+          logConsole('✅ Chamado resolvido! Próximo chamado liberado.', 'success');
+          btnNext.style.display = 'inline-block';
+        }
+        renderSidebar();
+
+        if (typeof window.reportActivity === 'function') {
+          window.reportActivity(
+            'fund_ambiente_pratica',
+            `Jogos — Ambiente e Ferramentas — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+            { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+          );
+        }
+      } else {
+        wrongTried.add(idx);
+        opt.classList.add('incorrect');
+        logConsole('❌ Não é essa. Tente outra opção — a dica pode ajudar.', 'fail');
+      }
+    }
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) logConsole('Você já resolveu este chamado. Pode revisar as opções.', 'info');
+    renderOptions(challenge, alreadyDone);
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'fund_ambiente_pratica',
+        `Jogos — Ambiente e Ferramentas — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Jogos: Central de Suporte a Devs (Multimídia)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050805;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(124,255,63,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--green); color:var(--green); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,59,48,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(124,255,63,0.15); color:var(--green); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--green); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--yellow); }
+
+  .explanation-box{
+    background:#050805; border:1px solid var(--green-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--green); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--yellow); }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--green-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(212,200,106,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--yellow);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--yellow); }
+
+  .options-panel{ background:var(--panel); border:1px solid var(--line); padding:10px 14px; flex-shrink:0; }
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--green-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--green); background:rgba(124,255,63,0.08); }
+  .option.correct .opt-letter{ border-color:var(--green); color:var(--green); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); opacity:0.6; cursor:not-allowed; }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04220a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .console{
+    background:#060806; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--green); font-weight:bold; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'fund_multimidia_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JOGOS — CENTRAL DE SUPORTE (MULTIMÍDIA E VERSIONAMENTO)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🎫</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <div class="options-panel" id="optionsPanel"></div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `fund_multimidia_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'A imagem importada não aparece',
+      icon: '🖼️',
+      explanation: 'Importar a imagem só coloca o arquivo no projeto — é o código quem associa esse sprite a um objeto do jogo e define sua posição/comportamento na cena.',
+      desc: 'Um aluno importou a imagem do personagem pro projeto, mas ao rodar o jogo nada aparece na tela. O que provavelmente falta?',
+      hint: 'Pense no passo entre "arquivo dentro do projeto" e "elemento visível na cena".',
+      options: [
+        'Associar a imagem a um objeto do jogo e definir sua posição na cena, via código',
+        'Aumentar o brilho da imagem',
+        'Renomear o arquivo pra maiúsculas',
+        'Isso é impossível de resolver, é preciso trocar de engine'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 2,
+      title: 'Bagunça nos assets',
+      icon: '🗂️',
+      explanation: 'Organizar assets em pastas por categoria, com nomes descritivos e consistentes, é a prática básica que evita perder tempo procurando arquivos num projeto grande.',
+      desc: 'O projeto acumulou centenas de imagens soltas numa única pasta, com nomes tipo "img1.png", "img2.png"... e o time está perdendo tempo achando cada asset. O que resolveria isso?',
+      hint: 'Pense em como você organizaria uma gaveta bagunçada com centenas de itens misturados.',
+      options: [
+        'Organizar os assets em pastas por categoria, com nomes descritivos',
+        'Apagar metade dos arquivos aleatoriamente',
+        'Comprimir tudo num único arquivo ZIP e nunca mais abrir',
+        'Aumentar a resolução de todas as imagens'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 3,
+      title: 'O som de dano não toca',
+      icon: '🔊',
+      explanation: 'Sons de efeito (como dano) precisam ser disparados por um evento específico do jogo — nesse caso, o evento de colisão com o inimigo precisa acionar a reprodução do áudio.',
+      desc: 'Um chamado relata: "o personagem colide com o inimigo, perde vida na tela, mas nenhum som de dano toca". O que provavelmente falta na integração de áudio?',
+      hint: 'Pense em qual evento deveria "avisar" o sistema de áudio pra tocar o efeito.',
+      options: [
+        'O evento de colisão não está disparando a reprodução do efeito sonoro de dano',
+        'O volume geral do jogo está desligado',
+        'O arquivo de imagem do inimigo está corrompido',
+        'Efeitos sonoros de dano não são possíveis em jogos 2D'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 4,
+      title: 'Perdeu o código que funcionava',
+      icon: '🕰️',
+      explanation: 'Com versionamento (Git), cada commit guarda um "ponto no tempo" do código — permitindo comparar ou voltar a uma versão anterior que ainda funcionava, mesmo sem lembrar exatamente o que mudou.',
+      desc: 'Um desenvolvedor fez uma mudança grande, o jogo quebrou, e ele não lembra exatamente o que alterou. Como o versionamento de código ajudaria aqui?',
+      hint: 'Pense num "histórico" de pontos anteriores do projeto que se pode consultar ou restaurar.',
+      options: [
+        'Permitindo comparar ou voltar para um commit anterior que ainda funcionava',
+        'Apagando o bug automaticamente',
+        'Aumentando a velocidade do computador',
+        'O versionamento não ajuda nesse tipo de situação'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 5,
+      title: 'Conflito de merge',
+      icon: '🔀',
+      explanation: 'Um conflito de merge acontece quando duas pessoas alteram a mesma parte de um arquivo — o Git avisa sobre o conflito, mas cabe ao time decidir manualmente qual mudança deve prevalecer.',
+      desc: 'Dois colegas editaram a mesma linha de código, cada um no seu computador, e o Git aponta um "conflito de merge" ao tentar juntar as mudanças. O que deve ser feito?',
+      hint: 'O Git não resolve isso sozinho — pense em quem realmente precisa decidir.',
+      options: [
+        'Decidir manualmente qual mudança (ou combinação delas) deve ficar, antes de continuar',
+        'Apagar o projeto e recomeçar do zero',
+        'Ignorar o aviso e continuar trabalhando normalmente',
+        'Formatar o computador de um dos dois colegas'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 6,
+      title: 'Personagem sem animação',
+      icon: '🏃',
+      explanation: 'Animar um personagem exige trocar qual frame de uma spritesheet é exibido em intervalos regulares — sem essa troca de quadros, o sprite fica parado mesmo se movendo pelo cenário.',
+      desc: 'Um personagem se move pelo cenário normalmente, mas o sprite dele fica totalmente parado, sem nenhuma animação de "andar". O que provavelmente falta?',
+      hint: 'Pense num flipbook: são vários quadros trocados rapidamente que criam a ilusão de movimento.',
+      options: [
+        'Trocar qual frame da spritesheet é exibido em intervalos regulares, criando a animação',
+        'Aumentar a velocidade de movimento do personagem',
+        'Trocar a cor do personagem',
+        'Redesenhar o sprite inteiro do zero'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 7,
+      title: 'Música para de repente',
+      icon: '🎵',
+      explanation: 'Trilha sonora de fundo precisa ser configurada explicitamente pra tocar em loop — sem isso, ela simplesmente silencia quando o arquivo de áudio termina.',
+      desc: 'A música de fundo de um jogo toca normalmente, mas silencia por completo depois de alguns minutos, sem nenhum aviso — era só a duração do arquivo. O que não foi configurado?',
+      hint: 'Pense na diferença entre "tocar uma vez" e "repetir sem parar" num player de áudio.',
+      options: [
+        'A opção de tocar a música em loop (repetir ao chegar no final)',
+        'O volume geral do jogo',
+        'A resolução do arquivo de áudio',
+        'A cor de fundo da tela'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 8,
+      title: 'Dois devs, um só código',
+      icon: '🌿',
+      explanation: 'Trabalhar direto na branch principal (main) expõe o código estável a mudanças incompletas. Uma branch separada isola o trabalho em progresso até estar pronto pra ser unido (merge) à main.',
+      desc: 'Dois desenvolvedores editam código direto na branch principal ao mesmo tempo, e um recurso ainda incompleto quebra o jogo pra todo mundo do time. O que evitaria isso?',
+      hint: 'Pense em isolar o trabalho "ainda não pronto" longe do código que todo mundo usa.',
+      options: [
+        'Desenvolver o recurso numa branch separada, só unindo à main quando estivesse pronto e testado',
+        'Trabalhar sempre sozinho, sem nunca usar Git em equipe',
+        'Apagar o código de um dos dois desenvolvedores',
+        'Isso não tem relação com branches'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 9,
+      title: 'Repositório gigante e lento',
+      icon: '🐘',
+      explanation: 'Arquivos gerados automaticamente (como pastas de build) não deveriam ser versionados. Um .gitignore lista o que o Git deve ignorar, mantendo o repositório leve.',
+      desc: 'O repositório de um projeto ficou enorme e lento porque a pasta de "build" (recriada a cada compilação) está sendo versionada junto com o código-fonte. O que resolveria isso?',
+      hint: 'Pense num arquivo que diz ao Git "nunca versione isto aqui".',
+      options: [
+        'Listar a pasta de build num arquivo .gitignore, pra o Git nunca versionar esse conteúdo',
+        'Apagar o Git do projeto por completo',
+        'Compactar a pasta de build antes de cada commit',
+        'Isso é normal e não há como evitar'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 10,
+      title: 'Histórico ilegível',
+      icon: '📜',
+      explanation: 'Commits pequenos e com mensagens descritivas tornam o histórico do projeto útil de verdade — mensagens genéricas como "fix" ou "ajustes" não dizem nada sobre o que de fato mudou.',
+      desc: 'O histórico de commits de um projeto está cheio de mensagens como "fix", "fix2", "ajustes finais v3", e ninguém consegue entender o que mudou em cada um sem abrir o código inteiro. O que deveria ter sido feito diferente?',
+      hint: 'Pense no que uma mensagem de commit deveria descrever, além de só "corrigi algo".',
+      options: [
+        'Fazer commits menores e mais frequentes, com mensagens descritivas do que de fato mudou',
+        'Nunca fazer commits, só salvar localmente',
+        'Apagar o histórico de commits antigo',
+        'Commitar o projeto inteiro de uma vez só, no final'
+      ],
+      correctIndex: 0
+    }
+  ];
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos: Central de Suporte a Devs — Multimídia e Versionamento',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        options: c.options,
+        correctIndex: c.correctIndex,
+        answer: c.options[c.correctIndex]
+      })),
+      fileName: 'fund-multimidia-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const optionsPanel = document.getElementById('optionsPanel');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🎫' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function renderOptions(challenge, alreadyDone) {
+    optionsPanel.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D'];
+    const wrongTried = new Set();
+
+    const order = challenge.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(challenge.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = challenge.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      if (alreadyDone) {
+        opt.classList.add('disabled');
+        if (pos === correctPos) opt.classList.add('correct');
+      } else {
+        opt.addEventListener('click', () => handleAnswer(challenge, pos, opt));
+      }
+      optionsPanel.appendChild(opt);
+    });
+
+    function handleAnswer(challenge, idx, opt) {
+      if (idx === correctPos) {
+        optionsPanel.querySelectorAll('.option').forEach(el => el.classList.add('disabled'));
+        opt.classList.add('correct');
+
+        completed.add(challenge.id);
+        saveCompleted(completed);
+        ticketStatusEl.textContent = 'RESOLVIDO';
+        ticketStatusEl.classList.add('done');
+        ticketStatusEl.classList.remove('pending');
+
+        const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+        if (isLast) {
+          logConsole('🏆 Chamado resolvido! Você concluiu todos os chamados de multimídia e versionamento!', 'success');
+        } else {
+          logConsole('✅ Chamado resolvido! Próximo chamado liberado.', 'success');
+          btnNext.style.display = 'inline-block';
+        }
+        renderSidebar();
+
+        if (typeof window.reportActivity === 'function') {
+          window.reportActivity(
+            'fund_multimidia_pratica',
+            `Jogos — Multimídia e Versionamento — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+            { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+          );
+        }
+      } else {
+        wrongTried.add(idx);
+        opt.classList.add('incorrect');
+        logConsole('❌ Não é essa. Tente outra opção — a dica pode ajudar.', 'fail');
+      }
+    }
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) logConsole('Você já resolveu este chamado. Pode revisar as opções.', 'info');
+    renderOptions(challenge, alreadyDone);
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'fund_multimidia_pratica',
+        `Jogos — Multimídia e Versionamento — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

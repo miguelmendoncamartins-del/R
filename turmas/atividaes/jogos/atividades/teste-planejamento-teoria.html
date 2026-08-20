@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Testes de Jogos: Planejamento (Teoria)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--blue); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .zeta-row{ display:flex; align-items:flex-start; gap:12px; }
+  .zeta-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(94,200,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--blue-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .zeta-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--blue);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble code{ color:var(--gold); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--gold); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--blue); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--gold); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--blue); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--gold); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--blue); border:1px solid var(--blue-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(94,200,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'teste_planejamento_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>TESTES DE JOGOS — PLANEJAMENTO (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">10</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `teste_planejamento_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Olá! Eu sou a <b>Zeta</b>, detetive de qualidade da PixelForge Studios. Meu trabalho é encontrar pistas de problemas <b>antes</b> do jogador — e toda investigação séria começa com um <b>plano</b>. Testar um jogo "de qualquer jeito", clicando aleatoriamente até cansar, deixa buracos enormes: telas inteiras podem nunca ser tocadas, enquanto outras são testadas cinco vezes à toa.',
+      question: {
+        prompt: 'Por que um plano de testes documentado é melhor do que simplesmente "jogar o jogo e ver se quebra"?',
+        options: [
+          'Porque documentar evita testar de forma aleatória e incompleta, garantindo que nada importante fique de fora',
+          'Porque documentar é só uma formalidade burocrática, sem efeito real na qualidade',
+          'Porque jogar aleatoriamente sempre encontra 100% dos bugs de qualquer jeito',
+          'Porque só é preciso um plano se o jogo já tiver sido lançado'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Sem plano, o teste vira aleatório — algumas partes do jogo ficam super testadas, outras nunca são tocadas. Documentar garante cobertura de verdade.'
+      }
+    },
+    {
+      story: 'A primeira pergunta de qualquer plano é: <b>o que exatamente vamos testar agora?</b> Isso é o <b>escopo</b>. Um jogo grande tem dezenas de sistemas (combate, loja, save, multiplayer...) — tentar testar tudo de uma vez, sem prioridade, é receita pra não terminar nada. O escopo diz claramente o que ENTRA nesta rodada de testes, e o que fica pra depois.',
+      question: {
+        prompt: 'A PixelForge vai lançar uma atualização que só mexeu no sistema de <b>loja</b> do jogo. O que o escopo do plano de testes dessa rodada deveria dizer?',
+        options: [
+          'Que os testes desta rodada se concentram no sistema de loja — os demais sistemas ficam fora, por não terem sido alterados',
+          'Que absolutamente tudo no jogo precisa ser testado de novo, sistema por sistema, sem exceção',
+          'Que não é preciso escrever nada, já que só um sistema mudou',
+          'Que só o programador que mexeu na loja pode decidir o que testar'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! O escopo foca no que de fato mudou — testar tudo de novo, sempre, desperdiça tempo sem necessariamente aumentar a qualidade daquela entrega específica.'
+      }
+    },
+    {
+      story: 'Depois de saber O QUE testar, falta saber: <b>quando um teste está "aprovado"?</b> Isso são os <b>critérios de aceite</b> — regras claras, combinadas ANTES de testar, que dizem o que precisa ser verdade pra considerar aquilo pronto. Sem critério de aceite, um bug pequeno vira discussão infinita: "isso bloqueia o lançamento ou não?"',
+      question: {
+        prompt: 'Um botão do menu principal aparece com a cor errada, mas continua funcionando normalmente. Sem critérios de aceite combinados antes, o que tende a acontecer?',
+        options: [
+          'A equipe discute caso a caso se aquilo é grave o suficiente pra travar o lançamento, sem critério objetivo pra decidir',
+          'O jogo é automaticamente aprovado, porque cor errada nunca importa',
+          'O jogo é automaticamente reprovado, porque qualquer bug visual é sempre crítico',
+          'Isso nunca precisa ser decidido, o critério de aceite é opcional'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! Sem critério de aceite definido de antemão, cada bug vira debate na hora — critérios claros (ex: "bugs visuais não bloqueiam, bugs de save sim") evitam essa bagunça.'
+      }
+    },
+    {
+      story: 'Com escopo e critérios definidos, é hora de escrever os <b>casos de teste</b>: um roteiro passo a passo, com a AÇÃO que o testador deve fazer e o RESULTADO esperado depois de cada passo. Sem isso, cada testador reproduz o cenário do jeito que "acha" que deveria ser — e dois testadores podem testar coisas totalmente diferentes achando que testaram a mesma coisa.',
+      question: {
+        prompt: 'Um chamado de teste diz só: "testar a compra de item na loja". Um testador clica direto no item; outro primeiro filtra por categoria, depois clica. O que está faltando nesse chamado?',
+          options: [
+            'Um caso de teste passo a passo, com a sequência exata de ações e o resultado esperado em cada uma',
+            'Nada — os dois testadores estão certos, o resultado é sempre o mesmo de qualquer jeito',
+            'Um critério de aceite, apesar de a ação a ser testada já estar bem clara',
+            'Um cronograma, apesar de os passos do teste já estarem bem definidos'
+          ],
+        correctIndex: 0,
+        explanation: 'Isso! Um bom caso de teste elimina a ambiguidade: define a sequência exata de passos e o que deve acontecer em cada um, pra qualquer testador chegar no mesmo resultado.'
+      }
+    },
+    {
+      story: 'Escopo, critérios e casos de teste prontos — falta combinar <b>quando</b> cada coisa será testada e <b>quem</b> é responsável por cada parte. Isso é o <b>cronograma e responsáveis</b> do plano. Sem essa peça, o trabalho pode ficar todo empilhado em cima de uma pessoa só, ou simplesmente nunca ter prazo pra acabar.',
+      question: {
+        prompt: 'Os casos de teste de uma atualização estão todos escritos e aprovados, mas ninguém sabe até quando isso precisa terminar nem quem executa cada bloco de testes. Que peça do plano está faltando?',
+        options: [
+          'Cronograma e responsáveis — quando cada parte será testada, e por quem',
+          'Escopo, apesar de já estar claro o que vai ser testado',
+          'Casos de teste, apesar de eles já estarem escritos e aprovados',
+          'Nenhuma — um plano de testes não precisa de prazo nem de responsável definido'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! De nada adianta ter os casos de teste prontos se ninguém sabe quando executá-los nem quem é o dono de cada parte — isso é justamente o papel do cronograma/responsáveis.'
+      }
+    },
+    {
+      story: 'Nem todo teste espera o jogo estar programado! O <b>teste de mesa</b> (tabletop testing) revisa REGRAS e DESIGN ainda no papel ou num protótipo simples — antes de qualquer linha de código da mecânica existir. É muito mais barato encontrar um problema de balanceamento numa planilha do que depois de semanas de programação.',
+      question: {
+        prompt: 'A equipe de design está discutindo uma mecânica nova de combate, ainda representada só em fichas de papel e uma planilha de números — nenhum código foi escrito ainda. Que tipo de teste é esse?',
+        options: [
+          'Teste de mesa — revisão de regras e design num protótipo simples, antes de existir código',
+          'Teste de desempenho, medindo o FPS da mecânica em tempo real',
+          'Teste automatizado, rodado direto no motor do jogo',
+          'Não é um teste de verdade, já que nenhum código existe ainda'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Testar regras/design em papel ou protótipo simples, antes de programar, é o teste de mesa — barato e rápido pra pegar problemas de balanceamento cedo.'
+      }
+    },
+    {
+      story: 'Com dezenas (às vezes centenas) de casos de teste cadastrados, é impossível rodar todos sempre que o prazo aperta. Por isso existe a <b>priorização</b>: separar o que é <b>crítico</b> (trava o jogo, impede progresso, quebra o save) do que é <b>secundário</b> (um detalhe cosmético, por exemplo) — pra saber o que rodar primeiro quando o tempo é curto.',
+      question: {
+        prompt: 'Faltam só 2 horas pro lançamento e só dá tempo de rodar uma parte dos casos de teste cadastrados. O que a priorização ajuda a decidir?',
+        options: [
+          'Quais casos são críticos (travam o jogo, quebram o save) e devem rodar primeiro, deixando os cosméticos pra depois',
+          'Que todos os casos têm exatamente a mesma importância, então a ordem não importa',
+          'Que só os testes cosméticos importam, porque são os que o jogador vê primeiro',
+          'Que o lançamento deve ser cancelado sempre que sobra pouco tempo'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Priorizar significa rodar primeiro o que é crítico pro jogo funcionar — problemas cosméticos, mesmo reais, podem esperar a próxima rodada.'
+      }
+    },
+    {
+      story: 'Um jogo nasce de um documento de requisitos (o GDD): "o jogador deve conseguir salvar o progresso", "o inimigo deve reagir ao som", etc. A <b>rastreabilidade</b> é o fio que liga cada um desses requisitos a PELO MENOS UM caso de teste — sem esse fio, um requisito inteiro pode passar despercebido, sem nunca ser testado de verdade.',
+      question: {
+        prompt: 'O GDD do jogo exige um sistema de save funcional, mas ao revisar a lista de casos de teste, a equipe percebe que nenhum caso cobre esse requisito. Que problema é esse?',
+        options: [
+          'Falta de rastreabilidade — o requisito do GDD não está ligado a nenhum caso de teste, então pode nunca ser validado',
+          'Falta de critérios de aceite, apesar de já existir um caso de teste cobrindo o save',
+          'Falta de teste de mesa, apesar de o save já estar totalmente programado e funcionando',
+          'Nenhum problema — requisitos do GDD não precisam necessariamente virar casos de teste'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Rastreabilidade é justamente ligar cada requisito a pelo menos um caso de teste — sem esse elo, um requisito inteiro pode ficar sem cobertura nenhuma, mesmo com o plano parecendo completo.'
+      }
+    },
+    {
+      story: 'Reportar um problema também é parte do plano — e a forma importa. <b>Comunicação não violenta</b> nos relatórios de teste significa descrever O QUE aconteceu de forma objetiva ("o botão X não responde ao clique"), em vez de apontar culpados ("fulano programou isso errado"). Isso mantém o foco em resolver o problema, não em quem errou.',
+      question: {
+        prompt: 'Um relatório de teste descreve um problema assim: "o programador responsável fez essa tela de qualquer jeito, sem cuidado nenhum". O que está errado nesse relatório?',
+        options: [
+          'Ele julga uma pessoa em vez de descrever o problema de forma objetiva — falta comunicação não violenta',
+          'Nada, esse é o formato ideal de relatório de teste',
+          'Ele deveria ser ainda mais duro com quem errou, pra garantir que não se repita',
+          'Relatórios de teste nunca devem mencionar nenhum problema encontrado'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Um bom relatório descreve o comportamento observado, sem julgar quem programou — isso é comunicação não violenta, e mantém o time focado em resolver, não em se defender.'
+      }
+    },
+    {
+      story: 'Por fim, um erro comum: achar que o plano de testes é escrito uma vez e nunca mais muda. Na prática, o jogo muda o tempo todo — mecânicas novas entram, outras são removidas. Um <b>plano de testes é vivo</b>: precisa ser revisado sempre que o jogo muda de verdade, senão ele vira um documento desatualizado, testando um jogo que já não existe mais daquele jeito. Agora você já reconhece as peças de um plano de testes de verdade!',
+      question: {
+        prompt: 'O jogo da PixelForge ganhou uma mecânica de combate totalmente nova há 3 meses, mas o plano de testes continua idêntico ao de antes dessa mudança. Qual é o problema?',
+        options: [
+          'O plano de testes não foi revisado depois da mudança — ele deveria ser atualizado sempre que o jogo muda de verdade',
+          'Nenhum — um plano de testes, uma vez escrito, nunca precisa ser revisado de novo',
+          'O problema é só dos programadores, o plano de testes não tem relação com mudanças de mecânica',
+          'O plano deveria ter sido apagado por completo assim que a mecânica nova entrou'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Um plano de testes precisa acompanhar as mudanças reais do jogo — se ficar parado no tempo, passa a testar (ou pior, deixar de testar) coisas que já não refletem o jogo atual.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Testes de Jogos Digitais — Planejamento de Testes',
+      subtitle: 'Aula Teórica · Trilha Planejamento de Testes · Turma Jogos Digitais',
+      capacidade: 'Analisar documentação de teste para planejamento da rotina / Reconhecer os elementos de um plano de testes.',
+      steps: STEPS,
+      fileName: 'teste-planejamento-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central de QA: Planejamento de Testes" no Portal de Aulas para os alunos resolverem os chamados de verdade.'
+    });
+  };
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Testes de Jogos Digitais — Planejamento de Testes',
+      subtitle: 'Aula Teórica · Trilha Planejamento de Testes · Turma Jogos Digitais',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'teste-planejamento-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('teste_planejamento_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Testes de Jogos — Planejamento — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'zeta-row';
+    row.innerHTML = `
+      <div class="zeta-avatar">🔍</div>
+      <div class="speech-bubble">
+        <span class="zeta-name">Zeta, a Detetive de Qualidade</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Testes de Jogos — Planejamento — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Testes de Jogos — Planejamento — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Planejamento de Testes concluído!</h2>
+        <p>Você já reconhece escopo, critérios de aceite, casos de teste, cronograma, teste de mesa, priorização, rastreabilidade e comunicação não violenta num plano de testes.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a lupa na mão: volte à trilha e abra o módulo de prática da Central de QA.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

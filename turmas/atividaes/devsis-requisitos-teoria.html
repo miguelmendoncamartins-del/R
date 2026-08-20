@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Requisitos Funcionais e Não Funcionais: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#070c12; --panel:#0d1620; --panel2:#0a121a; --line:#1c2f40;
+    --green:#3aa0ff; --green-dim:#2b6ba3; --blood:#c1121f; --blood-bright:#ff5b4d;
+    --yellow:#e0c46a; --ink:#d6e2ec; --ink-dim:#6c8698;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050a10;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(58,160,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--green); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .eri-row{ display:flex; align-items:flex-start; gap:12px; }
+  .eri-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(58,160,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--green-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .eri-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--green);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:8px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--yellow); white-space:pre;
+  }
+  .speech-bubble code{ color:var(--yellow); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--yellow); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--green-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--green); background:rgba(58,160,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--green); color:var(--green); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,91,77,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--green); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--yellow); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04150c; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--green); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--yellow); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--green); border:1px solid var(--green-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(58,160,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'devsis_requisitos_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>DEV SISTEMAS — CENTRAL DE SISTEMAS (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">9</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `devsis_requisitos_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'De volta! Eu sou o <b>Bit</b> de novo. Agora vamos falar de <b>requisitos</b>: antes de escolher QUALQUER tecnologia, é preciso entender o que o sistema PRECISA fazer. Existem dois tipos: <b>requisitos funcionais</b> (O QUE o sistema faz) e <b>requisitos não funcionais</b> (COMO ele se comporta — performance, segurança, escalabilidade).',
+      question: {
+        prompt: 'Um cliente faz dois pedidos: (1) "quero que o sistema envie um e-mail quando o pedido for confirmado" e (2) "quero que o sistema não trave mesmo com 5 mil pessoas usando ao mesmo tempo". Qual a diferença fundamental entre esses dois pedidos?',
+        options: [
+          'O primeiro é uma ação concreta (funcional); o segundo é uma qualidade de comportamento (não funcional)',
+          'Não existe diferença nenhuma entre eles',
+          'O primeiro é sempre mais importante que o segundo',
+          'O segundo só se aplica a jogos'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Requisito funcional descreve uma ação/funcionalidade; não funcional descreve uma característica de qualidade do sistema.'
+      }
+    },
+    {
+      story: 'Exemplo de requisito <b>funcional</b>: "o sistema deve permitir que o usuário faça login com e-mail e senha". Repare que é uma AÇÃO concreta que o sistema executa.',
+      question: {
+        prompt: 'Qual desses pedidos de cliente é um exemplo de requisito FUNCIONAL?',
+        options: [
+          '"O sistema deve permitir emitir uma nota fiscal ao fechar a venda"',
+          '"O sistema deve carregar a tela inicial em até 2 segundos"',
+          '"O sistema deve suportar 10 mil usuários simultâneos"',
+          '"O sistema deve funcionar em qualquer navegador"'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! Emitir uma nota fiscal é uma AÇÃO que o sistema executa — típico de requisito funcional.'
+      }
+    },
+    {
+      story: 'Já um requisito <b>não funcional</b> descreve uma QUALIDADE do sistema, não uma ação específica. Exemplo: "o sistema deve responder em menos de 2 segundos" — isso não descreve UMA funcionalidade, mas sim o desempenho de TODAS elas.',
+      question: {
+        prompt: 'Qual desses pedidos de cliente é um exemplo de requisito NÃO FUNCIONAL?',
+        options: [
+          '"O sistema deve ficar disponível 24h por dia, com no máximo 1h de manutenção por mês"',
+          '"O sistema deve permitir cadastrar um produto"',
+          '"O sistema deve enviar um e-mail de confirmação"',
+          '"O sistema deve exportar um relatório em PDF"'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Disponibilidade é uma característica de QUALIDADE do sistema, não uma funcionalidade específica — por isso é não funcional.'
+      }
+    },
+    {
+      story: 'Quando o requisito NÃO funcional é <b>performance</b> (ex: "carregar rápido, mesmo no celular"), isso influencia diretamente a escolha de bibliotecas: entre duas opções que fazem a mesma coisa, a mais leve/rápida tende a ser a escolha certa.',
+      question: {
+        prompt: 'Ao escolher entre duas bibliotecas equivalentes, uma pesada com muitos recursos e outra leve e rápida, para um app que precisa carregar rápido no celular, o que priorizar?',
+        options: [
+          'A biblioteca mais leve e rápida, pelo requisito de performance',
+          'Sempre a mais pesada, porque tem mais recursos',
+          'Não importa, todas as bibliotecas pesam igual',
+          'Nenhuma das duas, escrever tudo do zero sempre'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Quando o requisito não funcional é performance, a biblioteca mais leve tende a ser a escolha certa — mesmo abrindo mão de recursos extras.'
+      }
+    },
+    {
+      story: 'Já a escolha de um <b>framework</b> costuma partir de requisitos FUNCIONAIS: se o projeto PRECISA de automação de tarefas repetitivas, por exemplo, escolhemos um framework que já resolve isso pronto, em vez de reconstruir essa funcionalidade do zero.',
+      question: {
+        prompt: 'Escolher um framework porque ele já resolve pronto uma funcionalidade que o projeto PRECISA ter é decidir com base em qual tipo de requisito?',
+        options: ['Requisito funcional', 'Requisito não funcional', 'Nenhum requisito, só preferência pessoal', 'Requisito de design visual'],
+        correctIndex: 0,
+        explanation: 'Isso! A funcionalidade que o projeto precisa entregar é justamente o requisito FUNCIONAL — e o framework é escolhido pra atendê-lo.'
+      }
+    },
+    {
+      story: 'Cuidado com um erro comum: escolher uma tecnologia só porque "todo mundo usa" ou "é a mais popular", SEM checar se ela realmente atende aos requisitos do projeto. Popularidade não é o mesmo que adequação.',
+      question: {
+        prompt: 'Um time escolhe o framework X só porque "todo mundo tá usando agora", sem checar se ele resolve o que o projeto precisa. Meses depois, descobrem que falta uma funcionalidade essencial. O que deu errado logo no início?',
+        options: [
+          'A escolha não checou se a tecnologia atendia aos requisitos reais do projeto',
+          'Tecnologias populares nunca têm esse tipo de problema',
+          'Não existe problema nenhum nessa abordagem',
+          'Escolher o mais popular é sempre a decisão mais rápida e correta'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! Popularidade não garante adequação — a tecnologia certa é a que atende aos requisitos DAQUELE projeto específico.'
+      }
+    },
+    {
+      story: 'Depois de escolher, é importante <b>justificar e documentar</b> a decisão: por que essa API, essa biblioteca ou esse framework foi escolhido, e não outro. Isso ajuda o time inteiro a entender (e revisar, se precisar) a decisão no futuro.',
+      question: {
+        prompt: 'Seis meses depois, um novo integrante do time pergunta "por que usamos a biblioteca X e não a Y?" e ninguém lembra o motivo. O que teria evitado essa situação?',
+        options: [
+          'Ter documentado a justificativa da escolha no momento em que ela foi feita',
+          'Nada — esse tipo de esquecimento é inevitável',
+          'Isso só importaria se fosse pra impressionar o cliente',
+          'Documentação não influencia esse tipo de situação'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Documentar o "porquê" da escolha evita retrabalho e confusão quando alguém (inclusive você mesmo) revisitar essa decisão depois.'
+      }
+    },
+    {
+      story: 'Escolher a tecnologia ERRADA tem custo real: pode significar performance ruim, retrabalho pra trocar de biblioteca no meio do projeto, ou até funcionalidades que nunca ficam prontas do jeito que o cliente precisava.',
+      question: {
+        prompt: 'Um projeto escolheu uma biblioteca sem checar os requisitos e, no meio do desenvolvimento, precisou trocar tudo porque ela não aguentava o volume de usuários. Isso é um exemplo de quê?',
+        options: [
+          'O custo real de escolher a tecnologia errada: retrabalho e tempo perdido',
+          'Um evento raro que normalmente não acontece',
+          'Uma prova de que tecnologia é sempre intercambiável sem custo',
+          'Algo que o cliente nunca chega a perceber'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! A tecnologia errada custa tempo, dinheiro e qualidade — por isso vale investir tempo analisando os requisitos antes de decidir.'
+      }
+    },
+    {
+      story: 'Resumindo: toda escolha de tecnologia — API, biblioteca ou framework — deveria partir dos <b>requisitos reais</b> do projeto (funcionais E não funcionais), não da preferência pessoal do desenvolvedor ou da tecnologia "da moda". Com isso, você já sabe como definir tecnologias de forma consciente.',
+      question: {
+        prompt: 'Na hora de decidir entre duas bibliotecas concorrentes para um projeto, qual deveria ser o ponto de partida da decisão?',
+        options: [
+          'Os requisitos reais do projeto (funcionais e não funcionais)',
+          'A preferência pessoal do desenvolvedor',
+          'A tecnologia mais nova do mercado, sempre',
+          'O que é mais fácil de aprender'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Requisitos primeiro, tecnologia depois — essa ordem evita escolhas erradas por modismo ou preferência pessoal.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Dev Sistemas — Requisitos Funcionais e Não Funcionais',
+      subtitle: 'Aula Teórica · Trilha Tecnologias e Requisitos · Turma Sistemas',
+      capacidade: 'Definir tecnologias de acordo com os requisitos não funcionais / funcionais.',
+      steps: STEPS,
+      fileName: 'devsis-requisitos-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central de Sistemas: Requisitos" no Portal de Aulas para os alunos resolverem chamados de verdade.'
+    });
+  };
+
+  // Mesmo esquema do generateSlidesForGestao acima: exposto sempre pra a aba
+  // "Gestão" poder chamar remotamente, num iframe oculto, e baixar um .txt
+  // com pergunta + resposta esperada de cada etapa — sem o professor precisar
+  // decorar as respostas ou abrir o módulo pra conferir.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Dev Sistemas — Requisitos Funcionais e Não Funcionais',
+      subtitle: 'Aula Teórica · Trilha Tecnologias e Requisitos · Turma Sistemas',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'devsis-requisitos-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  // Ordem das perguntas embaralhada por aluno/tentativa — evita que a sequência
+  // fixa vire uma "lista de gabarito" compartilhada entre turmas.
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('devsis_requisitos_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Dev Sistemas — Requisitos — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'eri-row';
+    row.innerHTML = `
+      <div class="eri-avatar">🧑‍💻</div>
+      <div class="speech-bubble">
+        <span class="eri-name">Bit, Mentor de Código</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    // Embaralha a ordem de exibição pra resposta certa não cair sempre na letra A.
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Dev Sistemas — Requisitos — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    // Só conta como concluída (e libera o resto da trilha/jogos) com pelo
+    // menos 80% de acerto — abaixo disso, fica só o convite pra tentar de novo.
+    // reviewOnly=true (reabrindo um módulo já concluído) só reexibe a tela
+    // de sucesso sem recalcular/regravar — sem isso, progresso salvo antes
+    // dessa regra existir (sem correctCount) seria rebaixado pra "não
+    // concluído" só por reabrir o módulo.
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Dev Sistemas — Requisitos — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Requisitos Funcionais e Não Funcionais concluídos!</h2>
+        <p>Você já sabe diferenciar requisito funcional de não funcional, e como usar isso pra escolher APIs, bibliotecas e frameworks de forma consciente.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra o módulo de prática da Central de Sistemas.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

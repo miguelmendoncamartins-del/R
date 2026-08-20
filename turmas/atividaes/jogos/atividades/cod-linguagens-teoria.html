@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Linguagens, Dados e GDD: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--blue); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .bia-row{ display:flex; align-items:flex-start; gap:12px; }
+  .bia-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(94,200,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--blue-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .bia-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--blue);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble code{ color:var(--gold); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--gold); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--blue); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--gold); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--blue); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--gold); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--blue); border:1px solid var(--blue-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(94,200,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'cod_linguagens_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>CODIFICAÇÃO — LINGUAGENS, DADOS E GDD (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">5</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `cod_linguagens_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Oi de novo! Eu sou a <b>Bia</b>, a joaninha debugger da PixelForge Studios. Vamos falar de <b>linguagens de programação de jogos</b>: <code>C#</code> é muito usada na engine Unity, <code>GDScript</code> é a linguagem própria da Godot (parecida com Python), e <code>C++</code> é usada em engines de alta performance como a Unreal. Cada uma tem seu ecossistema — a escolha depende de qual engine o estúdio está usando.',
+      question: {
+        prompt: 'Um estúdio decide usar a engine Godot pra um novo projeto. Qual linguagem própria dessa engine, com sintaxe parecida com Python, provavelmente será usada?',
+        options: ['GDScript — linguagem da Godot', 'C# — linguagem da Unity', 'C++ — linguagem da Unreal', 'HTML — linguagem de páginas web'],
+        correctIndex: 0,
+        explanation: 'Isso! GDScript é a linguagem própria da Godot, com sintaxe inspirada em Python.'
+      }
+    },
+    {
+      story: 'Jogos também precisam salvar e carregar <b>dados</b> — e existem vários <b>formatos</b> pra isso. <code>JSON</code> é leve e fácil de ler, ótimo pra configs e saves simples. <code>XML</code> é mais verboso, mas também amplamente usado em ferramentas mais antigas. Já formatos <b>binários</b> são mais compactos e rápidos de carregar, mas nada legíveis "a olho nu".',
+      question: {
+        prompt: 'Um dev precisa salvar as configurações do jogo (volume, dificuldade, idioma) num arquivo fácil de ler e editar manualmente se precisar. Qual formato de dados é mais indicado?',
+        options: ['JSON — leve, fácil de ler e editar manualmente', 'Binário — compacto e rápido de carregar, mas ilegível', 'Nenhum formato de dados é necessário nesse caso', 'Apenas um arquivo de imagem, sem dados de configuração'],
+        correctIndex: 0,
+        explanation: 'Exato! JSON é leve e fácil de ler/editar, sendo ótimo pra configurações simples como essa.'
+      }
+    },
+    {
+      story: 'Antes de programar qualquer coisa, um projeto de jogo sério tem um <b>GDD (Game Design Document)</b>, onde ficam documentados os <b>requisitos funcionais</b> (o que o jogo precisa fazer, tipo "o jogador pode pular") e os <b>requisitos não funcionais</b> (como o jogo precisa se comportar, tipo "o jogo deve rodar a 60 FPS").',
+      question: {
+        prompt: 'No GDD de um jogo está escrito: "O jogo deve carregar cada fase em menos de 3 segundos". Que tipo de requisito é esse?',
+        options: [
+          'Requisito não funcional — descreve como o jogo deve se comportar (performance)',
+          'Requisito funcional — descreve uma ação que o jogador pode fazer',
+          'Não é um requisito, é só uma sugestão informal da equipe',
+          'Um formato de dados, sem nenhuma relação direta com requisitos'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! Tempo de carregamento é sobre COMO o jogo se comporta, não sobre uma ação específica do jogador — por isso é um requisito não funcional.'
+      }
+    },
+    {
+      story: 'A produção de um jogo passa por fases: a <b>pré-produção</b> é quando se planeja tudo (GDD, protótipos, testes de conceito) antes de produzir o jogo final de verdade. Só depois vem a <b>produção</b> propriamente dita, onde o time constrói o jogo completo com base no que foi planejado.',
+      question: {
+        prompt: 'Um estúdio cria um protótipo simples só pra testar se a mecânica principal do jogo é divertida, antes de investir em arte final e níveis completos. Em qual fase da produção isso acontece?',
+        options: ['Pré-produção — planejamento e testes de conceito antes do jogo final', 'Produção — construção do jogo completo com arte final', 'Pós-lançamento, depois que o jogo já foi lançado', 'Nenhuma fase específica da produção do jogo'],
+        correctIndex: 0,
+        explanation: 'Isso! Testar conceitos com protótipos simples, antes de investir no jogo completo, é justamente o papel da pré-produção.'
+      }
+    },
+    {
+      story: 'Por fim, tudo que aparece na tela passa pelo <b>pipeline de renderização</b>: os arquivos de <b>sprites</b> e <b>texturas</b> (as imagens do jogo) são carregados, processados pela engine e finalmente desenhados na tela, quadro a quadro. Entender esse fluxo ajuda a diagnosticar problemas de performance visual. Agora você já reconhece linguagens de jogos, formatos de dados, requisitos de um GDD, fases de produção e o pipeline de renderização!',
+      question: {
+        prompt: 'Um jogo carrega o arquivo de imagem de um personagem, a engine processa esse arquivo e finalmente desenha o personagem na tela a cada quadro. Esse fluxo completo é chamado de quê?',
+        options: ['Pipeline de renderização', 'Requisito funcional', 'Pré-produção', 'Formato de dados binário'],
+        correctIndex: 0,
+        explanation: 'Perfeito! O caminho completo desde o arquivo de imagem até o desenho final na tela é o pipeline de renderização.'
+      }
+    },
+    {
+      story: 'Além do GDScript, a engine Unity usa <b>C#</b> como sua linguagem principal — uma linguagem robusta, orientada a objetos, muito usada também fora de jogos. Se um estúdio escolhe trabalhar com Unity, é natural que o time programe majoritariamente em C#.',
+      question: {
+        prompt: 'Um estúdio decide construir seu próximo jogo usando a engine Unity. Qual linguagem de programação é a linguagem principal dessa engine?',
+        options: ['C#', 'GDScript', 'C++', 'HTML'],
+        correctIndex: 0,
+        explanation: 'Isso! C# é a linguagem principal da Unity.'
+      }
+    },
+    {
+      story: 'Já quando o assunto é <b>performance máxima</b>, muitos estúdios AAA recorrem à engine Unreal, que usa <b>C++</b> — uma linguagem de baixo nível, muito mais próxima do hardware, ideal quando cada milissegundo de processamento importa.',
+      question: {
+        prompt: 'Um estúdio está desenvolvendo um jogo AAA de mundo aberto, onde cada milissegundo de processamento importa muito. Qual combinação de engine/linguagem é mais associada a esse tipo de projeto de alta performance?',
+        options: ['Unreal com C++', 'Godot com GDScript', 'Um navegador com apenas HTML', 'Nenhuma engine é necessária nesse caso'],
+        correctIndex: 0,
+        explanation: 'Exato! A Unreal, com C++, é fortemente associada a projetos que exigem o máximo de performance.'
+      }
+    },
+    {
+      story: 'Nem todo sistema aceita o formato de dados mais moderno: algumas ferramentas mais antigas só leem arquivos <b>XML</b>, que é mais verboso que o JSON mas ainda amplamente usado em integrações legadas.',
+      question: {
+        prompt: 'Um estúdio precisa integrar seu jogo com uma ferramenta de pipeline mais antiga, que só consegue ler arquivos num formato de dados mais verboso e baseado em tags. Qual formato é esse?',
+        options: ['XML', 'JSON', 'Binário', 'Nenhum formato de dados existe pra esse caso'],
+        correctIndex: 0,
+        explanation: 'Isso! XML é o formato mais verboso, baseado em tags, ainda comum em ferramentas legadas.'
+      }
+    },
+    {
+      story: 'No GDD também aparecem <b>requisitos funcionais</b>: ações concretas que o jogo deve permitir, como "o jogador pode pular" ou "o jogador pode atacar". Eles descrevem O QUE o jogo faz, diferente dos requisitos não funcionais, que descrevem COMO o jogo se comporta.',
+      question: {
+        prompt: 'No GDD de um jogo está escrito: "O jogador deve conseguir pular pressionando a tecla espaço". Que tipo de requisito é esse?',
+        options: ['Requisito funcional — descreve uma ação que o jogador pode fazer', 'Requisito não funcional — descreve como o jogo se comporta', 'Um formato de dados, sem relação com requisitos', 'Não é um requisito, é só uma sugestão informal'],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! Descrever uma ação concreta que o jogador pode realizar é justamente um requisito funcional.'
+      }
+    },
+    {
+      story: 'Depois que o protótipo da pré-produção prova que a mecânica é divertida, o projeto entra na fase de <b>produção</b>: aí sim o time constrói o jogo completo, com arte final, todos os níveis e todo o conteúdo planejado no GDD. Agora você já reconhece C#, C++, XML, requisitos funcionais e a fase de produção!',
+      question: {
+        prompt: 'Depois que o protótipo provou que a mecânica principal era divertida, o estúdio começa a construir o jogo completo, com arte final e todos os níveis planejados. Em qual fase da produção isso acontece?',
+        options: ['Produção — construção do jogo completo', 'Pré-produção — planejamento e testes de conceito', 'Pós-lançamento, depois que o jogo já foi lançado', 'Nenhuma fase específica da produção do jogo'],
+        correctIndex: 0,
+        explanation: 'Perfeito! Construir o jogo completo, depois de validado o conceito, é justamente a fase de produção.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Codificação de Jogos — Linguagens, Dados e GDD',
+      subtitle: 'Aula Teórica · Trilha Linguagens, Dados e GDD · Turma Jogos Digitais',
+      capacidade: 'Reconhecer as linguagens de programação utilizadas no desenvolvimento de jogos / Reconhecer diferentes tipos e formatos de dados e arquivos / Reconhecer especificações técnicas definidas no projeto (GDD) / Reconhecer o processo de renderização de elementos multimídia.',
+      steps: STEPS,
+      fileName: 'cod-linguagens-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central de Codificação: Linguagens, Dados e GDD" no Portal de Aulas para os alunos resolverem os pareceres de verdade.'
+    });
+  };
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Codificação de Jogos — Linguagens, Dados e GDD',
+      subtitle: 'Aula Teórica · Trilha Linguagens, Dados e GDD · Turma Jogos Digitais',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'cod-linguagens-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('cod_linguagens_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Codificação — Linguagens e GDD — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'bia-row';
+    row.innerHTML = `
+      <div class="bia-avatar">🐞</div>
+      <div class="speech-bubble">
+        <span class="bia-name">Bia, a Joaninha Debugger</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Codificação — Linguagens e GDD — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Codificação — Linguagens e GDD — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Linguagens, Dados e GDD concluídos!</h2>
+        <p>Você já reconhece C#, GDScript e C++, formatos de dados (JSON/XML/binário), requisitos de um GDD, fases de produção e o pipeline de renderização.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra o módulo de prática da Central de Codificação.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

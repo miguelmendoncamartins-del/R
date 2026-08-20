@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Jogos: Central de Suporte a Devs (Programação 2D)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050805;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(124,255,63,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--green); color:var(--green); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .enemy-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .enemy-avatar{ font-size:32px; line-height:1; filter:drop-shadow(0 0 6px rgba(255,59,48,0.4)); }
+  .enemy-info{ flex:1; min-width:0; }
+  .enemy-name{ font-size:11.5px; color:var(--yellow); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+  .hp-bar-track{ width:100%; height:8px; background:#1a221a; border:1px solid var(--line); overflow:hidden; }
+  .hp-bar-fill{ height:100%; width:100%; background:var(--blood-bright); transition:width 0.6s ease; }
+  .hp-bar-fill.defeated{ width:0%; background:var(--ink-dim); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--green); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--yellow); }
+
+  .explanation-box{
+    background:#081208; border:1px solid var(--green-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--green); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--yellow); }
+  .explanation-box pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:6px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--yellow); white-space:pre;
+  }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--green-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(212,200,106,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--yellow);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--yellow); }
+
+  textarea#codeInput{
+    width:100%; flex:1; min-height:60px; resize:vertical; background:#000; color:var(--green);
+    border:1px solid var(--line); font-family:'JetBrains Mono', monospace; font-size:12px;
+    padding:10px; outline:none; line-height:1.5;
+  }
+  textarea#codeInput:focus{ border-color:var(--green); }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04220a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .console{
+    background:#060806; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.pass{ color:var(--green); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--green); font-weight:bold; }
+  .console .line.warn{ color:var(--yellow); }
+
+  /* Celular/telas estreitas: a barra lateral + painel lado a lado espreme
+     demais o conteúdo (texto quebrando palavra a palavra). Empilha tudo
+     numa coluna só e deixa a página inteira rolar, em vez de depender de
+     várias regiões de scroll aninhadas. */
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    textarea#codeInput{ min-height:110px; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'fund_prog2d_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JOGOS — CENTRAL DE SUPORTE (PROGRAMAÇÃO 2D) — CÓDIGO</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="enemy-row">
+            <div class="enemy-avatar" id="enemyAvatar">🎫</div>
+            <div class="enemy-info">
+              <div class="enemy-name" id="enemyName">--</div>
+              <div class="hp-bar-track"><div class="hp-bar-fill" id="hpBarFill"></div></div>
+            </div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <textarea id="codeInput" spellcheck="false"></textarea>
+
+        <div class="actions">
+          <button class="btn" id="btnRun">▶ Executar</button>
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `fund_prog2d_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Movimento Travado',
+      enemyName: 'Movimento Travado',
+      enemyEmoji: '⌨️',
+      fnName: 'moverComTeclado',
+      starter: 'function moverComTeclado(pos, teclas) {\n  // pos = { x, y }\n  // teclas = { cima, baixo, esquerda, direita } — booleans\n  // retorne um NOVO objeto { x, y } já movido 1 unidade pra cada tecla pressionada\n\n}',
+      explanation: 'Um jeito comum de mover um personagem é guardar o ESTADO de cada tecla (pressionada ou não) num objeto, e usar <code>if</code> pra cada uma:<pre>if (estado.subir) altura -= 1;\nif (estado.descer) altura += 1;</pre>Cada tecla mexe só no eixo que ela controla.',
+      desc: 'Um chamado relata: "o personagem anda um pixel e para, mesmo segurando a tecla de movimento". Complete <code>moverComTeclado(pos, teclas)</code> retornando a nova posição já movida — 1 unidade pra cada tecla pressionada em <code>teclas</code>.',
+      hint: 'Um <code>if</code> pra cada tecla, mexendo só no eixo (x ou y) que aquela tecla controla.',
+      tests: [
+        { args: [{x:5,y:5}, {cima:true,baixo:false,esquerda:false,direita:false}], check: r => r && r.x===5 && r.y===4, expectedLabel: '{x:5,y:4}' },
+        { args: [{x:5,y:5}, {cima:false,baixo:false,esquerda:true,direita:false}], check: r => r && r.x===4 && r.y===5, expectedLabel: '{x:4,y:5}' },
+        { args: [{x:0,y:0}, {cima:true,baixo:false,esquerda:false,direita:true}], check: r => r && r.x===1 && r.y===-1, expectedLabel: '{x:1,y:-1}' },
+        { args: [{x:0,y:0}, {cima:false,baixo:false,esquerda:false,direita:false}], check: r => r && r.x===0 && r.y===0, expectedLabel: '{x:0,y:0}' }
+      ]
+    },
+    {
+      id: 2,
+      title: 'Clique para Mover',
+      enemyName: 'Clique para Mover',
+      enemyEmoji: '🖱️',
+      fnName: 'passoAteClique',
+      starter: 'function passoAteClique(pos, alvo) {\n  // pos = { x, y } posição atual\n  // alvo = { x, y } posição clicada\n  // retorne a posição depois de UM passo (1 unidade) em direção ao alvo, em cada eixo\n\n}',
+      explanation: 'Pra dar um passo em direção a um alvo, comparamos a posição atual com a posição alvo em cada eixo:<pre>let passo = 0;\nif (atual < alvo) passo = 1;\nelse if (atual > alvo) passo = -1;</pre>O mesmo raciocínio se aplica separadamente pra cada coordenada.',
+      desc: 'A equipe quer implementar "clique em qualquer ponto do cenário e o personagem anda até lá". Complete <code>passoAteClique(pos, alvo)</code> retornando a posição depois de UM passo em direção ao <code>alvo</code> (1 unidade por eixo, na direção certa — e sem se mexer se já estiver no alvo naquele eixo).',
+      hint: 'Compare cada eixo (x e y) do <code>pos</code> com o do <code>alvo</code> separadamente — pense em <code>&lt;</code> e <code>&gt;</code> pra decidir pra que lado dar o passo.',
+      tests: [
+        { args: [{x:0,y:0}, {x:5,y:0}], check: r => r && r.x===1 && r.y===0, expectedLabel: '{x:1,y:0}' },
+        { args: [{x:5,y:5}, {x:0,y:5}], check: r => r && r.x===4 && r.y===5, expectedLabel: '{x:4,y:5}' },
+        { args: [{x:3,y:3}, {x:3,y:3}], check: r => r && r.x===3 && r.y===3, expectedLabel: '{x:3,y:3}' },
+        { args: [{x:2,y:8}, {x:5,y:5}], check: r => r && r.x===3 && r.y===7, expectedLabel: '{x:3,y:7}' }
+      ]
+    },
+    {
+      id: 3,
+      title: 'Colisão Fantasma',
+      enemyName: 'Colisão Fantasma',
+      enemyEmoji: '💥',
+      fnName: 'colisaoAABB',
+      starter: 'function colisaoAABB(a, b) {\n  // a e b = { x, y, largura, altura }\n  // retorne true se os dois retângulos estiverem se sobrepondo, false caso contrário\n\n}',
+      explanation: 'Colisão AABB (retângulos alinhados aos eixos) verifica se as bordas de dois retângulos se sobrepõem nos dois eixos ao mesmo tempo:<pre>const sobrepoeX = a.x < b.x + b.w && a.x + a.w > b.x;</pre>Só quando X e Y se sobrepõem juntos é que os retângulos colidem de verdade.',
+      desc: 'Dois sprites parecem se tocar na tela, mas o chamado diz que nenhuma colisão é detectada entre eles. Complete <code>colisaoAABB(a, b)</code> retornando <code>true</code> se os retângulos <code>a</code> e <code>b</code> estiverem se sobrepondo.',
+      hint: 'Pesquise "colisão AABB entre retângulos" — a checagem compara as bordas dos dois retângulos nos dois eixos (x e y) ao mesmo tempo.',
+      tests: [
+        { args: [{x:0,y:0,largura:10,altura:10}, {x:5,y:5,largura:10,altura:10}], expected: true },
+        { args: [{x:0,y:0,largura:10,altura:10}, {x:20,y:20,largura:10,altura:10}], expected: false },
+        { args: [{x:0,y:0,largura:5,altura:5}, {x:5,y:0,largura:5,altura:5}], expected: false },
+        { args: [{x:0,y:0,largura:5,altura:5}, {x:4,y:4,largura:5,altura:5}], expected: true }
+      ]
+    },
+    {
+      id: 4,
+      title: 'Raio de Detecção',
+      enemyName: 'Raio de Detecção',
+      enemyEmoji: '👾',
+      fnName: 'dentroDoRaio',
+      starter: 'function dentroDoRaio(pos, alvo, raio) {\n  // pos e alvo = { x, y }\n  // retorne true se a distância entre pos e alvo for MENOR OU IGUAL a raio\n\n}',
+      explanation: 'A distância entre dois pontos usa o teorema de Pitágoras:<pre>const dist = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);</pre>Comparando essa distância com um raio, dá pra saber se um ponto está "perto o bastante".',
+      desc: 'Um inimigo deveria começar a perseguir o jogador ao entrar num raio de detecção, mas continua parado mesmo com o jogador bem próximo. Complete <code>dentroDoRaio(pos, alvo, raio)</code> retornando <code>true</code> se a distância entre <code>pos</code> e <code>alvo</code> for menor ou igual a <code>raio</code>.',
+      hint: 'A fórmula de distância entre dois pontos usa <code>Math.sqrt</code> — depois é só comparar o resultado com o raio.',
+      tests: [
+        { args: [{x:0,y:0}, {x:3,y:4}, 5], expected: true },
+        { args: [{x:0,y:0}, {x:3,y:4}, 4], expected: false },
+        { args: [{x:0,y:0}, {x:0,y:0}, 0], expected: true },
+        { args: [{x:1,y:1}, {x:10,y:1}, 3], expected: false }
+      ]
+    },
+    {
+      id: 5,
+      title: 'Spawn de Inimigo',
+      enemyName: 'Spawn de Inimigo',
+      enemyEmoji: '🧟',
+      fnName: 'criarInimigo',
+      starter: 'function criarInimigo(tipo, x, y) {\n  // retorne um objeto novo com: tipo, x, y, vivo (começa true), vida (começa 100)\n\n}',
+      explanation: 'Uma função "fábrica" de objetos recebe alguns dados e devolve um objeto novo, já com valores padrão preenchidos:<pre>function criarItem(nome) {\n  return { nome, coletado: false, pontos: 10 };\n}</pre>',
+      desc: 'O sistema de spawn precisa de uma função que crie inimigos com valores padrão consistentes. Complete <code>criarInimigo(tipo, x, y)</code> retornando um objeto com <code>tipo</code>, <code>x</code>, <code>y</code>, <code>vivo: true</code> e <code>vida: 100</code>.',
+      hint: 'Retorne um objeto novo com todos os campos pedidos — pense em quais valores um inimigo recém-criado deveria ter por padrão.',
+      tests: [
+        { args: ['goblin', 10, 20], check: r => r && r.tipo==='goblin' && r.x===10 && r.y===20 && r.vivo===true && r.vida===100, expectedLabel: 'objeto com tipo/x/y/vivo:true/vida:100' },
+        { args: ['orc', 0, 0], check: r => r && r.tipo==='orc' && r.x===0 && r.y===0 && r.vivo===true && r.vida===100, expectedLabel: 'objeto com tipo/x/y/vivo:true/vida:100' }
+      ]
+    },
+    {
+      id: 6,
+      title: 'Atualização por Frame',
+      enemyName: 'Atualização por Frame',
+      enemyEmoji: '🎞️',
+      fnName: 'atualizarPosicoes',
+      starter: 'function atualizarPosicoes(lista) {\n  // lista = array de objetos { x, y, vx, vy }\n  // retorne uma NOVA lista, com x somado a vx e y somado a vy em cada objeto\n\n}',
+      explanation: 'Pra atualizar uma lista inteira sem alterar os objetos originais, <code>.map()</code> cria uma lista nova aplicando uma transformação em cada item:<pre>lista.map(item => ({ ...item, valor: item.valor + 1 }))</pre>',
+      desc: 'A cada frame, todo objeto da cena precisa se mover de acordo com sua própria velocidade. Complete <code>atualizarPosicoes(lista)</code> retornando uma NOVA lista onde cada objeto teve <code>x</code> somado com seu <code>vx</code> e <code>y</code> somado com seu <code>vy</code>.',
+      hint: 'Pra cada objeto da lista, some a velocidade (<code>vx</code>, <code>vy</code>) à posição atual (<code>x</code>, <code>y</code>) — o método <code>.map()</code> ajuda a criar a lista nova.',
+      tests: [
+        { args: [[{x:0,y:0,vx:1,vy:2}]], check: r => Array.isArray(r) && r.length===1 && r[0].x===1 && r[0].y===2, expectedLabel: '[{x:1,y:2,...}]' },
+        { args: [[{x:5,y:5,vx:-1,vy:0},{x:0,y:0,vx:2,vy:2}]], check: r => Array.isArray(r) && r.length===2 && r[0].x===4 && r[0].y===5 && r[1].x===2 && r[1].y===2, expectedLabel: '[{x:4,y:5,...},{x:2,y:2,...}]' },
+        { args: [[]], check: r => Array.isArray(r) && r.length===0, expectedLabel: '[]' }
+      ]
+    },
+    {
+      id: 7,
+      title: 'Fantasmas na Lista',
+      enemyName: 'Fantasmas na Lista',
+      enemyEmoji: '👻',
+      fnName: 'removerMortos',
+      starter: 'function removerMortos(lista) {\n  // lista = array de objetos { ..., vivo: true|false }\n  // retorne só os objetos com vivo === true\n\n}',
+      explanation: '<code>.filter()</code> cria uma lista nova só com os itens que passam num teste — os que não passam ficam de fora:<pre>lista.filter(item => item.ativo)</pre>',
+      desc: 'Um chamado relata "fantasmas" travando o jogador — objetos já derrotados continuam participando da checagem de colisão. Complete <code>removerMortos(lista)</code> retornando só os objetos com <code>vivo: true</code>.',
+      hint: 'O método <code>.filter()</code> cria uma lista nova só com os itens que passam numa condição.',
+      tests: [
+        { args: [[{id:1,vivo:true},{id:2,vivo:false},{id:3,vivo:true}]], check: r => Array.isArray(r) && r.length===2 && r[0].id===1 && r[1].id===3, expectedLabel: '[{id:1,...},{id:3,...}]' },
+        { args: [[{id:1,vivo:false}]], check: r => Array.isArray(r) && r.length===0, expectedLabel: '[]' },
+        { args: [[]], check: r => Array.isArray(r) && r.length===0, expectedLabel: '[]' }
+      ]
+    },
+    {
+      id: 8,
+      title: 'Busca no Inventário',
+      enemyName: 'Busca no Inventário',
+      enemyEmoji: '🔍',
+      fnName: 'buscarPorId',
+      starter: 'function buscarPorId(lista, id) {\n  // retorne o objeto da lista com esse id, ou null se não existir nenhum\n\n}',
+      explanation: '<code>.find()</code> devolve o primeiro item de um array que bate com uma condição, ou <code>undefined</code> se nenhum bater:<pre>lista.find(item => item.nome === "chave")</pre>',
+      desc: 'O inventário precisa localizar um item específico pelo id. Complete <code>buscarPorId(lista, id)</code> retornando o objeto com aquele <code>id</code>, ou <code>null</code> se não existir nenhum na lista.',
+      hint: 'O método <code>.find()</code> procura o primeiro item que bate com uma condição — e não esqueça de tratar o caso de não achar nada (o método sozinho não devolve <code>null</code>).',
+      tests: [
+        { args: [[{id:1,nome:'a'},{id:2,nome:'b'}], 2], check: r => r && r.id===2 && r.nome==='b', expectedLabel: '{id:2,nome:"b"}' },
+        { args: [[{id:1,nome:'a'}], 99], check: r => r === null, expectedLabel: 'null' },
+        { args: [[], 1], check: r => r === null, expectedLabel: 'null' }
+      ]
+    },
+    {
+      id: 9,
+      title: 'Contagem de Ativos',
+      enemyName: 'Contagem de Ativos',
+      enemyEmoji: '📊',
+      fnName: 'contarAtivos',
+      starter: 'function contarAtivos(lista) {\n  // lista = array de objetos { ..., ativo: true|false }\n  // retorne quantos objetos têm ativo === true\n\n}',
+      explanation: 'Combinar <code>.filter()</code> (pra selecionar) com <code>.length</code> (pra contar) é um jeito comum de responder "quantos itens atendem essa condição?":<pre>lista.filter(item => item.tipo === "moeda").length</pre>',
+      desc: 'O HUD do jogo precisa mostrar quantos inimigos ainda estão ativos na cena. Complete <code>contarAtivos(lista)</code> retornando quantos objetos da lista têm <code>ativo: true</code>.',
+      hint: 'Conte quantos itens do array atendem a uma condição — <code>.filter()</code> seguido de <code>.length</code> é um caminho.',
+      tests: [
+        { args: [[{ativo:true},{ativo:false},{ativo:true}]], expected: 2 },
+        { args: [[]], expected: 0 },
+        { args: [[{ativo:false}]], expected: 0 }
+      ]
+    },
+    {
+      id: 10,
+      title: 'Teclado + Mouse Juntos',
+      enemyName: 'Teclado + Mouse Juntos',
+      enemyEmoji: '🕹️',
+      fnName: 'processarFrame',
+      starter: 'function processarFrame(teclas, mouseAlvo) {\n  // teclas = { cima, baixo, esquerda, direita }\n  // mouseAlvo = { x, y }\n  // retorne { posicao, mira } — posicao vem de mover com as teclas a partir de {x:0,y:0}, mira é o próprio mouseAlvo recebido\n\n}',
+      explanation: 'Um game loop real processa TODAS as entradas relevantes no mesmo frame, não só uma — o retorno de uma função pode juntar o resultado de mais de uma fonte de dado no mesmo objeto:<pre>{ posicao: novaPos, selecionado: idClicado }</pre>',
+      desc: 'Um chamado relata: "a mira do mouse funciona certinho, mas o personagem parou de andar com o teclado (WASD) desde que adicionamos a mira". Complete <code>processarFrame(teclas, mouseAlvo)</code> retornando <code>{ posicao, mira }</code>, onde <code>posicao</code> vem de mover com as teclas a partir de <code>{x:0,y:0}</code> (mesma lógica do primeiro chamado desta trilha) e <code>mira</code> é o próprio <code>mouseAlvo</code> recebido.',
+      hint: 'A função recebe DUAS fontes de entrada — não esqueça de processar as duas e devolver as duas no mesmo objeto de retorno, não só uma.',
+      tests: [
+        { args: [{cima:true,baixo:false,esquerda:false,direita:false}, {x:9,y:9}], check: r => r && r.posicao && r.posicao.x===0 && r.posicao.y===-1 && r.mira && r.mira.x===9 && r.mira.y===9, expectedLabel: '{posicao:{x:0,y:-1}, mira:{x:9,y:9}}' },
+        { args: [{cima:false,baixo:false,esquerda:true,direita:false}, {x:2,y:3}], check: r => r && r.posicao && r.posicao.x===-1 && r.posicao.y===0 && r.mira && r.mira.x===2 && r.mira.y===3, expectedLabel: '{posicao:{x:-1,y:0}, mira:{x:2,y:3}}' }
+      ]
+    }
+  ];
+
+  // Exposto sempre (não só quando o botão local aparece) pra a aba "Gestão"
+  // do portal da turma conseguir chamar isso remotamente, num iframe oculto,
+  // e baixar um .txt com enunciado + critério de avaliação (testes) de cada
+  // chamado — aqui não existe UM código certo, e sim um valor esperado por
+  // combinação de argumentos, então o gabarito lista os casos de teste.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos: Central de Suporte a Devs — Programação de Jogos 2D (Código)',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        answer: c.tests.map(t => {
+          const inputs = (t.args || []).map(a => JSON.stringify(a)).join(', ');
+          const exp = ('expected' in t) ? JSON.stringify(t.expected) : (t.expectedLabel || 'ver critério no código-fonte');
+          return `${c.fnName}(${inputs}) deve retornar ${exp}`;
+        }).join('\n')
+      })),
+      fileName: 'fund-prog2d-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const enemyAvatarEl = document.getElementById('enemyAvatar');
+  const enemyNameEl = document.getElementById('enemyName');
+  const hpBarFill = document.getElementById('hpBarFill');
+  const codeInput = document.getElementById('codeInput');
+  const btnRun = document.getElementById('btnRun');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🎫' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.enemyEmoji} ${c.enemyName}</span>`;
+      if (unlocked) {
+        item.addEventListener('click', () => selectChallenge(c.id));
+      }
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    codeInput.value = challenge.starter;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    enemyAvatarEl.textContent = challenge.enemyEmoji;
+    enemyNameEl.textContent = challenge.enemyName;
+    const alreadyDone = completed.has(id);
+    hpBarFill.classList.toggle('defeated', alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) {
+      logConsole(`Você já resolveu este chamado. Pode revisar/reenviar o código pra treinar.`, 'info');
+    }
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'fund_prog2d_pratica',
+        `Jogos — Programação de Jogos 2D — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  function clearConsole() {
+    consoleOutput.innerHTML = '';
+  }
+
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function deepEqual(a, b) {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
+    }
+    return a === b;
+  }
+
+  function runChallenge() {
+    const challenge = CHALLENGES.find(c => c.id === selectedId);
+    if (!challenge) return;
+    clearConsole();
+
+    let fn;
+    try {
+      fn = new Function(`${codeInput.value}\nreturn typeof ${challenge.fnName} === 'function' ? ${challenge.fnName} : undefined;`)();
+    } catch (err) {
+      logConsole('Erro de sintaxe: ' + err.message, 'fail');
+      return;
+    }
+
+    if (typeof fn !== 'function') {
+      logConsole(`A função '${challenge.fnName}' não foi encontrada. Verifique o nome da função.`, 'fail');
+      return;
+    }
+
+    let allPass = true;
+    challenge.tests.forEach((t, i) => {
+      let result, errorMsg = null;
+      try {
+        result = fn(...t.args);
+      } catch (err) {
+        errorMsg = err.message;
+      }
+
+      let pass;
+      if (errorMsg !== null) {
+        pass = false;
+      } else if (typeof t.check === 'function') {
+        pass = t.check(result, ...t.args);
+      } else {
+        pass = deepEqual(result, t.expected);
+      }
+      if (!pass) allPass = false;
+
+      const argsStr = t.args.map(a => JSON.stringify(a)).join(', ');
+      const expectedStr = t.expectedLabel ? t.expectedLabel : JSON.stringify(t.expected);
+
+      if (pass) {
+        logConsole(`[Teste ${i + 1}] ${challenge.fnName}(${argsStr}) → ${JSON.stringify(result)} ✅`, 'pass');
+      } else if (errorMsg) {
+        logConsole(`[Teste ${i + 1}] ${challenge.fnName}(${argsStr}) → Erro: ${errorMsg} ❌`, 'fail');
+      } else {
+        logConsole(`[Teste ${i + 1}] ${challenge.fnName}(${argsStr}) → ${JSON.stringify(result)} (esperado ${expectedStr}) ❌`, 'fail');
+      }
+    });
+
+    if (allPass) {
+      completed.add(challenge.id);
+      saveCompleted(completed);
+      hpBarFill.classList.add('defeated');
+
+      const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+      if (isLast) {
+        logConsole('🏆 Chamado resolvido! Você concluiu todos os chamados de Programação de Jogos 2D!', 'success');
+      } else {
+        logConsole('✅ Chamado resolvido! Próximo chamado liberado.', 'success');
+        btnNext.style.display = 'inline-block';
+      }
+      renderSidebar();
+
+      if (typeof window.reportActivity === 'function') {
+        window.reportActivity(
+          'fund_prog2d_pratica',
+          `Jogos — Programação de Jogos 2D — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+          { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+        );
+      }
+    } else {
+      logConsole('❌ Ainda não passou em todos os testes. Ajuste o código e tente de novo.', 'warn');
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+
+  btnRun.addEventListener('click', runChallenge);
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

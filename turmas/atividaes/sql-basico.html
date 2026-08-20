@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — SQL Básico</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#070c12; --panel:#0d1620; --panel2:#0a121a; --line:#1c2f40;
+    --green:#3aa0ff; --green-dim:#2b6ba3; --blood:#c1121f; --blood-bright:#ff5b4d;
+    --yellow:#e0c46a; --ink:#d6e2ec; --ink-dim:#6c8698;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050a10;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(58,160,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--green); color:var(--green); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .schema-toggle{
+    display:block; width:100%; margin-bottom:10px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--green-dim); padding:6px 8px; cursor:pointer; border-radius:2px;
+  }
+  .schema-box{ display:none; margin-bottom:10px; background:#000; border:1px solid var(--line); padding:8px; font-size:10.5px; line-height:1.6; }
+  .schema-box.show{ display:block; }
+  .schema-box table{ color:var(--yellow); }
+  .schema-box .tname{ color:var(--green); font-weight:800; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,91,77,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(58,160,255,0.15); color:var(--green); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--green); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--yellow); }
+
+  .explanation-box{
+    background:#050a10; border:1px solid var(--green-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--green); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--yellow); }
+  .explanation-box pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:6px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--yellow); white-space:pre;
+  }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--green-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(224,196,106,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--yellow);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--yellow); }
+
+  textarea#codeInput{
+    width:100%; min-height:70px; resize:vertical; background:#000; color:var(--green);
+    border:1px solid var(--line); font-family:'JetBrains Mono', monospace; font-size:12.5px;
+    padding:10px; outline:none; line-height:1.5; flex-shrink:0;
+  }
+  textarea#codeInput:focus{ border-color:var(--green); }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04150c; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .result-panel{
+    background:#060a0e; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex-shrink:0; max-height:130px; overflow:auto;
+  }
+  .result-panel table{ border-collapse:collapse; width:100%; }
+  .result-panel th{ text-align:left; color:var(--yellow); border-bottom:1px solid var(--line); padding:3px 8px; white-space:nowrap; }
+  .result-panel td{ padding:3px 8px; border-bottom:1px solid #10202c; white-space:nowrap; }
+  .result-panel .empty{ color:var(--ink-dim); font-style:italic; }
+
+  .console{
+    background:#060806; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.pass{ color:var(--green); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--green); font-weight:bold; }
+  .console .line.warn{ color:var(--yellow); }
+
+  /* Celular/telas estreitas: a barra lateral + painel lado a lado espreme
+     demais o conteúdo (texto quebrando palavra a palavra). Empilha tudo
+     numa coluna só e deixa a página inteira rolar, em vez de depender de
+     várias regiões de scroll aninhadas. */
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    textarea#codeInput{ min-height:110px; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'sql_basico';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>SQL — CENTRAL DE DADOS (BÁSICO)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <button class="schema-toggle" id="btnSchema">🗂️ Ver estrutura do banco</button>
+          <div class="schema-box" id="schemaBox">
+            <div><span class="tname">departamentos</span> (id, nome)</div>
+            <div style="margin-top:4px;"><span class="tname">funcionarios</span> (id, nome, cargo, departamento_id, salario)</div>
+          </div>
+
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🎫</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <textarea id="codeInput" spellcheck="false" placeholder="Carregando motor SQL..." disabled></textarea>
+
+        <div class="actions">
+          <button class="btn" id="btnRun" disabled>▶ Executar consulta</button>
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="result-panel" id="resultPanel"><span class="empty">Nenhuma consulta executada ainda.</span></div>
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `sql_basico_progress_${username}`;
+
+  // Schema + dados de exemplo. É recriado do zero antes de CADA execução
+  // (do aluno e da solução), então nenhum chamado depende do estado deixado
+  // por outro — cada um sempre parte do mesmo banco "de fábrica".
+  const SEED_SQL = `
+    CREATE TABLE departamentos (
+      id INTEGER PRIMARY KEY,
+      nome TEXT NOT NULL
+    );
+    CREATE TABLE funcionarios (
+      id INTEGER PRIMARY KEY,
+      nome TEXT NOT NULL,
+      cargo TEXT NOT NULL,
+      departamento_id INTEGER,
+      salario REAL NOT NULL
+    );
+    INSERT INTO departamentos (id, nome) VALUES
+      (1, 'Desenvolvimento'), (2, 'Suporte'), (3, 'Diretoria');
+    INSERT INTO funcionarios (id, nome, cargo, departamento_id, salario) VALUES
+      (1, 'Ana Beatriz', 'Desenvolvedora', 1, 4200.00),
+      (2, 'Carlos Eduardo', 'Analista de Suporte', 2, 2800.00),
+      (3, 'Fernanda Lima', 'Desenvolvedora Pleno', 1, 5300.00),
+      (4, 'Rodrigo Alves', 'Diretor de TI', 3, 9800.00),
+      (5, 'Juliana Costa', 'Estagiária', 1, 1400.00);
+  `;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Listar tudo',
+      icon: '📋',
+      starter: '-- liste TODOS os funcionários, com todas as colunas\n\n',
+      explanation: 'Pra trazer todas as colunas de uma tabela, use <code>SELECT *</code> seguido de <code>FROM nome_da_tabela</code>:<pre>SELECT * FROM departamentos;</pre>',
+      desc: 'Chegou um chamado: a central quer ver <b>todos os funcionários</b> cadastrados, com todas as colunas.',
+      hint: 'Lembre da estrutura <code>SELECT ... FROM tabela;</code> — qual símbolo representa "todas as colunas"?',
+      solutionSql: 'SELECT * FROM funcionarios;',
+      verifyQuery: null,
+      orderMatters: false
+    },
+    {
+      id: 2,
+      title: 'Colunas específicas',
+      icon: '🔎',
+      starter: '-- traga só as colunas nome e cargo, nessa ordem\n\n',
+      explanation: 'Em vez de <code>*</code>, você pode listar só as colunas que quer, separadas por vírgula:<pre>SELECT nome, id FROM departamentos;</pre>',
+      desc: 'A central só precisa do <b>nome</b> e do <b>cargo</b> de cada funcionário — nessa ordem, sem as outras colunas.',
+      hint: 'No lugar de <code>*</code>, liste só as colunas que você quer, separadas por vírgula, na ordem pedida.',
+      solutionSql: 'SELECT nome, cargo FROM funcionarios;',
+      verifyQuery: null,
+      orderMatters: false
+    },
+    {
+      id: 3,
+      title: 'Filtrar com WHERE',
+      icon: '🧭',
+      starter: '-- liste (todas as colunas) só quem é do departamento_id 1\n\n',
+      explanation: 'O <code>WHERE</code> filtra quais linhas aparecem no resultado:<pre>SELECT * FROM funcionarios WHERE departamento_id = 2;</pre>',
+      desc: 'Liste <b>todas as colunas</b> dos funcionários que são do departamento de <b>Desenvolvimento</b> (<code>departamento_id = 1</code>).',
+      hint: 'Use <code>WHERE</code> para filtrar pela coluna que guarda o departamento, comparando com o id certo.',
+      solutionSql: 'SELECT * FROM funcionarios WHERE departamento_id = 1;',
+      verifyQuery: null,
+      orderMatters: false
+    },
+    {
+      id: 4,
+      title: 'Comparar números',
+      icon: '💰',
+      starter: '-- traga nome e salario de quem ganha mais de 3000\n\n',
+      explanation: 'No <code>WHERE</code> você também pode comparar números com <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code>:<pre>SELECT nome FROM funcionarios WHERE salario &lt; 2000;</pre>',
+      desc: 'Liste <b>nome</b> e <b>salario</b> (nessa ordem) de quem ganha <b>mais de 3000</b>.',
+      hint: 'Use <code>WHERE</code> com um operador de "maior que" na coluna de salário.',
+      solutionSql: 'SELECT nome, salario FROM funcionarios WHERE salario > 3000;',
+      verifyQuery: null,
+      orderMatters: false
+    },
+    {
+      id: 5,
+      title: 'Ordenar resultado',
+      icon: '📈',
+      starter: '-- traga nome e salario de todos, do maior salario pro menor\n\n',
+      explanation: '<code>ORDER BY coluna DESC</code> ordena do maior pro menor; <code>ORDER BY coluna ASC</code> (ou sem nada) ordena do menor pro maior:<pre>SELECT nome FROM funcionarios ORDER BY nome ASC;</pre>',
+      desc: 'Liste <b>nome</b> e <b>salario</b> (nessa ordem) de <b>todos os funcionários</b>, do <b>maior salário pro menor</b>.',
+      hint: 'Use <code>ORDER BY</code> na coluna de salário — qual palavra-chave ordena do maior pro menor?',
+      solutionSql: 'SELECT nome, salario FROM funcionarios ORDER BY salario DESC;',
+      verifyQuery: null,
+      orderMatters: true
+    },
+    {
+      id: 6,
+      title: 'Cadastrar (INSERT)',
+      icon: '➕',
+      starter: "-- cadastre o novo funcionário descrito no chamado\n\n",
+      explanation: '<code>INSERT INTO</code> adiciona uma linha nova. Liste as colunas e depois os valores, na mesma ordem:<pre>INSERT INTO departamentos (id, nome)\nVALUES (4, &quot;Financeiro&quot;);</pre>',
+      desc: 'Chegou um novo funcionário: <b>id 6</b>, nome <code>Bruno Martins</code>, cargo <code>Suporte Júnior</code>, <code>departamento_id 2</code>, salario <code>2100</code>. Cadastre ele na tabela <code>funcionarios</code>.',
+      hint: 'Use <code>INSERT INTO tabela (colunas) VALUES (valores)</code> — capriche pra colocar os dados do chamado na mesma ordem das colunas.',
+      solutionSql: "INSERT INTO funcionarios (id, nome, cargo, departamento_id, salario) VALUES (6, 'Bruno Martins', 'Suporte Júnior', 2, 2100);",
+      verifyQuery: 'SELECT * FROM funcionarios ORDER BY id;',
+      orderMatters: true
+    },
+    {
+      id: 7,
+      title: 'Atualizar (UPDATE)',
+      icon: '✏️',
+      starter: '-- atualize o salario da funcionária descrita no chamado\n\n',
+      explanation: '<code>UPDATE</code> muda valores de linhas já existentes. Sempre use <code>WHERE</code> pra não mudar a tabela inteira por engano:<pre>UPDATE departamentos SET nome = &quot;TI&quot; WHERE id = 1;</pre>',
+      desc: 'A funcionária <b>Juliana Costa</b> (<code>id 5</code>) foi efetivada — atualize o <code>salario</code> dela para <b>2600</b>.',
+      hint: 'Use <code>UPDATE tabela SET coluna = valor WHERE ...</code> — não esqueça do <code>WHERE</code>, senão muda todo mundo.',
+      solutionSql: 'UPDATE funcionarios SET salario = 2600 WHERE id = 5;',
+      verifyQuery: 'SELECT * FROM funcionarios ORDER BY id;',
+      orderMatters: true
+    },
+    {
+      id: 8,
+      title: 'Remover (DELETE)',
+      icon: '🗑️',
+      starter: '-- remova o funcionário descrito no chamado\n\n',
+      explanation: '<code>DELETE FROM</code> remove linhas. Sempre com <code>WHERE</code>, senão apaga a tabela inteira:<pre>DELETE FROM departamentos WHERE id = 3;</pre>',
+      desc: 'O funcionário <b>Carlos Eduardo</b> (<code>id 2</code>) saiu da empresa — remova o cadastro dele de <code>funcionarios</code>.',
+      hint: 'Use <code>DELETE FROM tabela WHERE ...</code> apontando exatamente pro funcionário certo, senão apaga tudo.',
+      solutionSql: 'DELETE FROM funcionarios WHERE id = 2;',
+      verifyQuery: 'SELECT * FROM funcionarios ORDER BY id;',
+      orderMatters: true
+    }
+  ];
+
+  // Exposto sempre (não só quando o botão local aparece) pra a aba "Gestão"
+  // do portal da turma conseguir chamar isso remotamente, num iframe oculto,
+  // e baixar um .txt com enunciado + consulta SQL esperada de cada chamado.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'SQL Básico',
+      subtitle: 'Prática · Turma Sistemas',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        answer: c.solutionSql
+      })),
+      fileName: 'sql-basico-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const codeInput = document.getElementById('codeInput');
+  const btnRun = document.getElementById('btnRun');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const btnSchema = document.getElementById('btnSchema');
+  const schemaBox = document.getElementById('schemaBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const resultPanel = document.getElementById('resultPanel');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🎫' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function renderResultTable(res) {
+    if (!res || !res.columns || res.columns.length === 0) {
+      resultPanel.innerHTML = '<span class="empty">Consulta executada sem linhas de resultado (ex: INSERT/UPDATE/DELETE).</span>';
+      return;
+    }
+    if (res.values.length === 0) {
+      resultPanel.innerHTML = '<span class="empty">0 linhas retornadas.</span>';
+      return;
+    }
+    let html = '<table><thead><tr>' + res.columns.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+    res.values.forEach(row => {
+      html += '<tr>' + row.map(v => `<td>${v === null ? 'NULL' : v}</td>`).join('') + '</tr>';
+    });
+    html += '</tbody></table>';
+    resultPanel.innerHTML = html;
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    codeInput.value = challenge.starter;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    resultPanel.innerHTML = '<span class="empty">Nenhuma consulta executada ainda.</span>';
+    if (alreadyDone) logConsole(`Você já resolveu este chamado. Pode executar de novo pra treinar.`, 'info');
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'sql_basico',
+        `SQL Básico — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  // ---------- Motor SQL (sql.js / SQLite via WebAssembly) ----------
+  let SQL = null;
+
+  function freshDb() {
+    const db = new SQL.Database();
+    db.run(SEED_SQL);
+    return db;
+  }
+
+  function execLast(db, sql) {
+    const results = db.exec(sql);
+    if (!results || results.length === 0) return { columns: [], values: [] };
+    return results[results.length - 1];
+  }
+
+  function normalizeRows(res) {
+    return res.values.map(row => JSON.stringify(row));
+  }
+
+  function resultsMatch(expected, actual, orderMatters) {
+    if (JSON.stringify(expected.columns) !== JSON.stringify(actual.columns)) return false;
+    const exp = normalizeRows(expected);
+    const act = normalizeRows(actual);
+    if (exp.length !== act.length) return false;
+    if (orderMatters) return JSON.stringify(exp) === JSON.stringify(act);
+    const expSorted = [...exp].sort();
+    const actSorted = [...act].sort();
+    return expSorted.every((v, i) => v === actSorted[i]);
+  }
+
+  function runChallenge() {
+    const challenge = CHALLENGES.find(c => c.id === selectedId);
+    if (!challenge || !SQL) return;
+    clearConsole();
+
+    const studentSql = codeInput.value.trim();
+    if (!studentSql) {
+      logConsole('Escreva uma consulta SQL antes de executar.', 'warn');
+      return;
+    }
+
+    // Resultado esperado: roda a solução de referência num banco novo e limpo.
+    const expectedDb = freshDb();
+    expectedDb.run(challenge.solutionSql);
+    const expected = execLast(expectedDb, challenge.verifyQuery || challenge.solutionSql);
+    expectedDb.close();
+
+    // Resultado do aluno: roda o SQL dele em outro banco novo e limpo.
+    const studentDb = freshDb();
+    let actual, errorMsg = null;
+    try {
+      studentDb.run(studentSql);
+      actual = execLast(studentDb, challenge.verifyQuery || studentSql);
+    } catch (err) {
+      errorMsg = err.message;
+    }
+    studentDb.close();
+
+    if (errorMsg) {
+      logConsole('Erro ao executar sua consulta: ' + errorMsg, 'fail');
+      resultPanel.innerHTML = '<span class="empty">Nenhum resultado (erro na consulta).</span>';
+      return;
+    }
+
+    renderResultTable(actual);
+
+    const pass = resultsMatch(expected, actual, challenge.orderMatters);
+    if (pass) {
+      completed.add(challenge.id);
+      saveCompleted(completed);
+      ticketStatusEl.textContent = 'RESOLVIDO';
+      ticketStatusEl.classList.add('done');
+      ticketStatusEl.classList.remove('pending');
+
+      const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+      if (isLast) {
+        logConsole(`🏆 Chamado resolvido! Você concluiu todos os chamados do módulo SQL Básico!`, 'success');
+      } else {
+        logConsole(`✅ Chamado resolvido! Próximo chamado liberado.`, 'success');
+        btnNext.style.display = 'inline-block';
+      }
+      renderSidebar();
+
+      if (typeof window.reportActivity === 'function') {
+        window.reportActivity(
+          'sql_basico',
+          `SQL Básico — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+          { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+        );
+      }
+    } else {
+      logConsole('❌ O resultado não bateu com o esperado pelo chamado. Ajuste a consulta e tente de novo.', 'fail');
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnSchema.addEventListener('click', () => {
+    schemaBox.classList.toggle('show');
+  });
+  btnRun.addEventListener('click', runChallenge);
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+
+  if (typeof window.initSqlJs === 'function') {
+    window.initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}` })
+      .then(sqlModule => {
+        SQL = sqlModule;
+        codeInput.disabled = false;
+        codeInput.placeholder = '';
+        btnRun.disabled = false;
+        logConsole('Motor SQL carregado. Pode executar sua consulta.', 'info');
+      })
+      .catch(err => {
+        logConsole('Não foi possível carregar o motor SQL (verifique sua conexão com a internet): ' + err.message, 'fail');
+      });
+  } else {
+    logConsole('Não foi possível carregar o motor SQL (verifique sua conexão com a internet).', 'fail');
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

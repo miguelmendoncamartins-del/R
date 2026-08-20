@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Métodos e Estratégias de Desenvolvimento: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--blue); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .nia-row{ display:flex; align-items:flex-start; gap:12px; }
+  .nia-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(94,200,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--blue-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .nia-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--blue);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble code{ color:var(--gold); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--gold); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--blue); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--gold); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--blue); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--gold); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--blue); border:1px solid var(--blue-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(94,200,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'projetos_metodos_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JOGOS — MÉTODOS E ESTRATÉGIAS (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">5</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `projetos_metodos_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Olá! Eu sou a <b>Nia</b>, a bússola de projetos da PixelForge Studios — é minha função orientar cada equipe do "mar aberto de ideias" até um projeto de jogo de pé no chão. Antes de qualquer linha de código, todo projeto começa por um <b>método de pensar</b>. No <b>método indutivo</b>, você observa vários casos particulares e chega a uma regra geral; no <b>dedutivo</b>, parte de uma regra geral já conhecida pra explicar um caso específico.',
+      question: {
+        prompt: 'Um dev percebe que, em várias partidas de teste, todo personagem que toca nos espinhos perde exatamente 1 vida — e a partir dessas observações repetidas conclui a regra geral "espinhos tiram 1 vida". Isso é um exemplo de qual método?',
+        options: [
+          'Método indutivo — observações particulares repetidas levaram a uma regra geral',
+          'Método dedutivo — uma regra geral foi aplicada a um caso específico',
+          'Nenhum método — foi só sorte de observar isso',
+          'Método dialético — confronto de duas ideias opostas'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Partir de vários casos observados até chegar numa regra geral é justamente o caminho do método indutivo.'
+      }
+    },
+    {
+      story: 'Já o <b>método hipotético-dedutivo</b> trabalha ao contrário do senso comum: você formula uma <b>hipótese testável</b> e tenta ativamente refutá-la com testes — se ela resiste, ganha mais confiança. O <b>método dialético</b> evolui uma solução colocando ideias opostas (tese e antítese) em confronto até chegar numa síntese melhor que as duas.',
+      question: {
+        prompt: 'A equipe levanta a hipótese "o jogo está engasgando porque tem sprites demais na tela" e roda um teste reduzindo a quantidade de sprites só pra confirmar ou refutar essa ideia. Qual método está sendo aplicado?',
+        options: [
+          'Método hipotético-dedutivo — uma hipótese testável foi criada e testada diretamente',
+          'Método indutivo — várias observações levaram a uma regra',
+          'Método dialético — duas ideias opostas foram confrontadas',
+          'Nenhum método formal, é só tentativa aleatória'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Formular uma hipótese específica e testá-la de propósito pra confirmar ou refutar é a marca registrada do método hipotético-dedutivo.'
+      }
+    },
+    {
+      story: 'No dia a dia, essas ideias viram <b>estratégias práticas de resolução de problema</b>: a mais comum é a <b>decomposição</b> — quebrar um problema grande e assustador em pedaços pequenos o suficiente pra testar um de cada vez, isolando onde está o erro real.',
+      question: {
+        prompt: 'Um bug complexo está deixando o jogo instável. Em vez de mexer em tudo ao mesmo tempo, a dev separa o problema em partes menores (física, entrada do teclado, renderização) e testa cada uma isoladamente. Que estratégia é essa?',
+        options: [
+          'Decomposição do problema em partes menores e testáveis',
+          'Reescrever o jogo inteiro do zero',
+          'Ignorar o bug e torcer pra ele sumir sozinho',
+          'Copiar um código pronto de outro projeto sem entender o que ele faz'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Decompor um problema grande em partes pequenas e testáveis facilita muito achar onde exatamente está o erro.'
+      }
+    },
+    {
+      story: 'Ferramentas de <b>Inteligência Artificial</b> hoje ajudam sugerindo código, gerando testes e até apontando bugs — mas elas não substituem a postura investigativa de quem programa. Uma sugestão de IA pode conter erros ou "alucinações", então cabe ao desenvolvedor sempre <b>validar</b> o que foi gerado antes de aceitar.',
+      question: {
+        prompt: 'Um dev pede pra uma IA sugerir uma correção pra um bug, mas mesmo assim testa manualmente e revisa a explicação antes de aceitar a mudança no código. Por que essa validação continua sendo necessária mesmo usando IA?',
+        options: [
+          'Porque ferramentas de IA podem errar ou "alucinar", e cabe ao dev validar o que é gerado antes de aplicar',
+          'Porque nenhuma IA jamais acerta nada',
+          'Porque revisar código sugerido por IA é sempre desnecessário',
+          'Porque a IA sempre substitui totalmente o julgamento humano'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! IA é uma ferramenta de apoio poderosa, mas erros/alucinações existem — a validação humana continua sendo parte essencial do método.'
+      }
+    },
+    {
+      story: 'Por fim, tudo isso se resume numa <b>postura investigativa</b>: antes de sair aplicando qualquer correção, é preciso <b>diagnosticar</b> — reproduzir o problema, coletar informações, entender o cenário. Diagnóstico vem antes do remédio. Agora você já conhece os métodos que orientam qualquer bom desenvolvimento de projeto!',
+      question: {
+        prompt: 'Um aluno reporta apenas "o jogo trava" sem mais nenhum detalhe. Qual deve ser o primeiro passo antes de tentar qualquer correção?',
+        options: [
+          'Investigar e diagnosticar o problema (reproduzir o erro, coletar mais informações) antes de aplicar qualquer correção',
+          'Aplicar a primeira correção aleatória que vier à cabeça',
+          'Reinstalar o sistema operacional do aluno',
+          'Ignorar o relato até o aluno desistir de reportar'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Sem diagnóstico, qualquer correção é um tiro no escuro — investigar primeiro economiza tempo e evita consertar a coisa errada.'
+      }
+    },
+    {
+      story: 'Vale reforçar a diferença com outro exemplo prático: às vezes você já conhece uma regra geral consolidada — tipo "nesta engine, colisores sempre disparam o evento antes da física ser aplicada" — e usa essa regra pra prever o comportamento de um caso novo específico. Isso também é <b>dedução</b>: partir do geral pro específico.',
+      question: {
+        prompt: 'A equipe sabe, por documentação da engine, que "colisores sempre disparam o evento antes da física ser aplicada". Baseado só nessa regra já conhecida, o dev prevê corretamente que um evento de colisão específico vai disparar antes do personagem cair. Que método ele usou?',
+        options: [
+          'Método dedutivo — partiu de uma regra geral já conhecida para prever um caso específico',
+          'Método indutivo — observou vários casos até chegar numa regra',
+          'Método dialético — confrontou duas ideias opostas',
+          'Nenhum método, foi só sorte'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Partir de uma regra geral já sabida para prever/explicar um caso específico é o caminho inverso da indução — é dedução pura.'
+      }
+    },
+    {
+      story: 'O <b>método dialético</b> merece destaque à parte: ele não descarta ideias opostas, e sim as coloca em confronto direto — uma <b>tese</b> contra uma <b>antítese</b> — até nascer uma <b>síntese</b> que aproveita o melhor dos dois lados.',
+      question: {
+        prompt: 'Um dev defende programar o inimigo com árvore de decisão (tese); outro defende máquina de estados (antítese). Depois de debater os prós e contras de cada abordagem, a equipe chega numa solução híbrida que combina os pontos fortes das duas. Que método foi aplicado?',
+        options: [
+          'Método dialético — tese e antítese confrontadas até uma síntese',
+          'Método indutivo — várias observações levaram a uma regra',
+          'Método hipotético-dedutivo — uma hipótese foi testada isoladamente',
+          'Nenhum método, foi decisão aleatória'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Confrontar duas ideias opostas (tese x antítese) até nascer uma solução que aproveita o melhor das duas é a marca do método dialético.'
+      }
+    },
+    {
+      story: 'Outra estratégia poderosa de resolução de problemas é a <b>analogia</b>: lembrar de um problema parecido que você (ou a comunidade) já resolveu antes, e adaptar aquela solução pro caso novo, em vez de partir do zero.',
+      question: {
+        prompt: 'Uma dev se lembra de ter resolvido um bug parecido de colisão em outro projeto, e adapta aquela mesma lógica pro problema atual, em vez de investigar do zero. Que estratégia de resolução de problema é essa?',
+        options: [
+          'Analogia — adaptar uma solução de um problema parecido já resolvido antes',
+          'Decomposição do problema em partes menores',
+          'Método dialético de confronto de ideias',
+          'Ignorar o problema até ele desaparecer'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Reconhecer um padrão parecido com algo já resolvido e adaptar a solução é a estratégia de analogia — economiza tempo de investigação do zero.'
+      }
+    },
+    {
+      story: 'Além de sugerir correções, ferramentas de IA também ajudam <b>gerando casos de teste</b> — cenários que talvez a equipe não tivesse pensado sozinha. Mas, de novo, cabe ao time revisar se esses testes realmente fazem sentido pro jogo antes de confiar neles.',
+      question: {
+        prompt: 'Uma IA sugere 10 casos de teste pra uma função de dano, mas dois deles usam valores que nunca aconteceriam no jogo de verdade (vida negativa fora de qualquer regra). O que a equipe deve fazer?',
+        options: [
+          'Revisar os casos gerados pela IA e descartar os que não fazem sentido pro jogo antes de usar',
+          'Aceitar todos os 10 casos sem revisão, já que vieram de uma IA',
+          'Ignorar completamente qualquer sugestão de teste gerada por IA',
+          'Deletar a função de dano por causa dos casos estranhos'
+        ],
+        correctIndex: 0,
+        explanation: 'Correto! IA pode ajudar a gerar ideias de teste, mas cabe ao time validar se cada caso realmente representa uma situação possível do jogo.'
+      }
+    },
+    {
+      story: 'Por fim, um cuidado extra da postura investigativa: nem toda coincidência é causa. Um bug pode aparecer sempre "depois" de uma ação sem ser <b>causado</b> por ela — confundir <b>correlação</b> com <b>causa</b> leva a corrigir a coisa errada. Agora sim: você domina os métodos que orientam qualquer bom desenvolvimento de projeto!',
+      question: {
+        prompt: 'Um dev percebe que o jogo trava sempre alguns segundos depois de o jogador pular, e conclui de cara que "o pulo causa o travamento" sem investigar mais. Qual é o risco dessa conclusão apressada?',
+        options: [
+          'Confundir correlação (acontecer junto/depois) com causa real, corrigindo a coisa errada',
+          'Nenhum risco, coincidência sempre significa causa',
+          'O risco é só estético, não afeta a correção do bug',
+          'Pular deixa de existir no jogo depois dessa conclusão'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Duas coisas acontecerem em sequência não prova que uma causou a outra — postura investigativa exige confirmar a causa real antes de corrigir.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Jogos — Métodos e Estratégias de Desenvolvimento',
+      subtitle: 'Aula Teórica · Trilha Métodos e Estratégias de Desenvolvimento · Turma Jogos Digitais',
+      capacidade: 'Reconhecer diferentes métodos aplicados ao desenvolvimento do projeto.',
+      steps: STEPS,
+      fileName: 'projetos-metodos-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central de Projetos: Métodos e Estratégias" no Portal de Aulas para os alunos resolverem os pareceres de verdade.'
+    });
+  };
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos — Métodos e Estratégias de Desenvolvimento',
+      subtitle: 'Aula Teórica · Trilha Métodos e Estratégias de Desenvolvimento · Turma Jogos Digitais',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'projetos-metodos-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('projetos_metodos_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Jogos — Métodos e Estratégias — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'nia-row';
+    row.innerHTML = `
+      <div class="nia-avatar">🧭</div>
+      <div class="speech-bubble">
+        <span class="nia-name">Nia, a Bússola de Projetos</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Jogos — Métodos e Estratégias — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Jogos — Métodos e Estratégias — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Métodos e Estratégias concluídos!</h2>
+        <p>Você já reconhece os métodos que orientam o desenvolvimento de um projeto: indutivo, dedutivo, hipotético-dedutivo, dialético, decomposição de problemas e o papel da IA como apoio — sempre com postura investigativa.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra o módulo de prática da Central de Projetos.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

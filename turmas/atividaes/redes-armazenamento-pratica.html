@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Redes: Central de Armazenamento</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#070c12; --panel:#0d1620; --panel2:#0a121a; --line:#1c2f40;
+    --green:#3aa0ff; --green-dim:#2b6ba3; --blood:#c1121f; --blood-bright:#ff5b4d;
+    --yellow:#e0c46a; --ink:#d6e2ec; --ink-dim:#6c8698;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050a10;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(58,160,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--green); color:var(--green); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,91,77,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(58,160,255,0.15); color:var(--green); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--green); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--yellow); }
+
+  .explanation-box{
+    background:#050a10; border:1px solid var(--green-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--green); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--yellow); }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--green-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(224,196,106,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--yellow);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--yellow); }
+
+  .options-panel{ background:var(--panel); border:1px solid var(--line); padding:10px 14px; flex-shrink:0; }
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--green-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--green); background:rgba(58,160,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--green); color:var(--green); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,91,77,0.08); opacity:0.6; cursor:not-allowed; }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04150c; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .console{
+    background:#060806; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--green); font-weight:bold; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'redes_armazenamento_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>REDES — CENTRAL DE REDES (ARMAZENAMENTO)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🎫</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <div class="options-panel" id="optionsPanel"></div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `redes_armazenamento_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Convertendo velocidade',
+      icon: '🔢',
+      explanation: 'Velocidade de internet é medida em megabits por segundo (Mbps). Tamanho e velocidade de transferência de arquivo costumam ser em megabytes por segundo (MB/s) — unidades diferentes, fáceis de confundir.',
+      desc: 'A internet contratada é de <b>100 Mbps</b>. Aproximadamente qual a velocidade MÁXIMA de download, em <b>MB/s (megabytes por segundo)</b>?',
+      hint: 'Bit e byte não são a mesma unidade — quantos bits existem em 1 byte? Isso muda a conversão entre Mbps e MB/s.',
+      options: ['~12,5 MB/s', '~100 MB/s', '~800 MB/s', '~1 MB/s'],
+      correctIndex: 0
+    },
+    {
+      id: 2,
+      title: 'Identifique o ativo',
+      icon: '🔀',
+      explanation: 'O switch conecta fisicamente, com cabo, vários dispositivos dentro da mesma rede local — diferente do access point (sem fio) e do roteador (conecta redes diferentes).',
+      desc: 'Chamado: você precisa CONECTAR COM CABO 20 computadores de um mesmo escritório, todos na mesma rede local. Qual ativo de rede resolve isso?',
+      hint: 'Pense no equipamento feito pra ligar vários dispositivos COM FIO dentro da mesma rede.',
+      options: ['Switch', 'Roteador', 'Access Point', 'Patch panel'],
+      correctIndex: 0
+    },
+    {
+      id: 3,
+      title: 'Política de backup',
+      icon: '🗂️',
+      explanation: 'A regra 3-2-1 é um resumo clássico de política de backup: 3 cópias dos dados, em 2 mídias diferentes, com 1 cópia fora do local original.',
+      desc: 'Chamado: a diretoria pediu pra explicar, em uma frase, a política de backup recomendada como boa prática de mercado. Qual das opções resume corretamente essa regra?',
+      hint: 'É uma regra numérica bem conhecida — pense em quantas cópias, quantas mídias diferentes, e onde fica pelo menos uma delas.',
+      options: ['Regra 3-2-1 (3 cópias, 2 mídias, 1 fora do local)', 'RAID 1 (espelhamento simples)', 'Backup mensal automático', 'Cópia única em nuvem'],
+      correctIndex: 0
+    },
+    {
+      id: 4,
+      title: 'Onde ficam os dados',
+      icon: '☁️',
+      explanation: 'Armazenamento em nuvem coloca os dados em servidores acessíveis pela internet, de qualquer lugar — sem depender de um único servidor físico local.',
+      desc: 'Chamado: a empresa quer que os funcionários acessem os mesmos arquivos de QUALQUER lugar, inclusive de casa, sem depender de um servidor físico específico da empresa. Que tipo de armazenamento atende isso?',
+      hint: 'Pense em qual dos três tipos (local, rede, nuvem) não depende de estar fisicamente perto de um servidor específico.',
+      options: ['Armazenamento em nuvem', 'Armazenamento local', 'NAS na rede interna', 'Fita magnética no armário'],
+      correctIndex: 0
+    },
+    {
+      id: 5,
+      title: 'Protegendo contra falha de disco',
+      icon: '🛡️',
+      explanation: 'Redundância (como RAID) distribui ou duplica os dados entre discos, de forma que a falha de UM disco não signifique perda dos dados.',
+      desc: 'Chamado: o servidor de arquivos precisa continuar funcionando mesmo se UM dos discos falhar, sem perder nenhum dado armazenado. Qual conceito resolve isso?',
+      hint: 'Pense na técnica que existe justamente pra tolerar a falha de um componente físico.',
+      options: ['Redundância (RAID)', 'Criptografia', 'Aumentar a velocidade da internet', 'Trocar o cabo de rede'],
+      correctIndex: 0
+    }
+  ];
+
+  // Exposto sempre (não só quando o botão local aparece) pra a aba "Gestão"
+  // do portal da turma conseguir chamar isso remotamente, num iframe oculto,
+  // e baixar um .txt com enunciado + resposta esperada de cada chamado.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Redes: Central de Armazenamento',
+      subtitle: 'Prática · Turma Sistemas',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        options: c.options,
+        correctIndex: c.correctIndex,
+        answer: c.options[c.correctIndex]
+      })),
+      fileName: 'redes-armazenamento-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const optionsPanel = document.getElementById('optionsPanel');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🎫' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function renderOptions(challenge, alreadyDone) {
+    optionsPanel.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D'];
+
+    challenge.options.forEach((optText, idx) => {
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[idx]}</span><span>${optText}</span>`;
+      if (alreadyDone) {
+        opt.classList.add('disabled');
+        if (idx === challenge.correctIndex) opt.classList.add('correct');
+      } else {
+        opt.addEventListener('click', () => handleAnswer(challenge, idx, opt));
+      }
+      optionsPanel.appendChild(opt);
+    });
+
+    function handleAnswer(challenge, idx, opt) {
+      if (idx === challenge.correctIndex) {
+        optionsPanel.querySelectorAll('.option').forEach(el => el.classList.add('disabled'));
+        opt.classList.add('correct');
+
+        completed.add(challenge.id);
+        saveCompleted(completed);
+        ticketStatusEl.textContent = 'RESOLVIDO';
+        ticketStatusEl.classList.add('done');
+        ticketStatusEl.classList.remove('pending');
+
+        const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+        if (isLast) {
+          logConsole('🏆 Chamado resolvido! Você concluiu todos os chamados de armazenamento!', 'success');
+        } else {
+          logConsole('✅ Chamado resolvido! Próximo chamado liberado.', 'success');
+          btnNext.style.display = 'inline-block';
+        }
+        renderSidebar();
+
+        if (typeof window.reportActivity === 'function') {
+          window.reportActivity(
+            'redes_armazenamento_pratica',
+            `Redes — Armazenamento — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+            { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+          );
+        }
+      } else {
+        opt.classList.add('incorrect');
+        logConsole('❌ Não é essa. Tente outra opção — a dica pode ajudar.', 'fail');
+      }
+    }
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) logConsole('Você já resolveu este chamado. Pode revisar as opções.', 'info');
+    renderOptions(challenge, alreadyDone);
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'redes_armazenamento_pratica',
+        `Redes — Armazenamento — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

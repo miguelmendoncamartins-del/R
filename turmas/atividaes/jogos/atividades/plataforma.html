@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Turma Jogos Digitais</title>
+
+<!-- Tema da turma "Jogos Digitais": só as cores mudam de uma turma para outra.
+     Estrutura, tabs, jogos e painel do professor vivem em shared/. -->
+<style>
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+  }
+</style>
+<link rel="stylesheet" href="../../shared/platform-core.css">
+
+<script src="../../shared/users-db.js"></script>
+<script src="../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../shared/clipboard-guard.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+  window.TURMA_CONFIG = window.TURMA_CONFIG_JOGOS;
+</script>
+<script src="../../shared/platform-core.js"></script>
+
+</body>
+</html>

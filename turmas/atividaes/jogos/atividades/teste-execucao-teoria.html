@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Testes de Jogos: Execução por Versão (Teoria)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--blue); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .zeta-row{ display:flex; align-items:flex-start; gap:12px; }
+  .zeta-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(94,200,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--blue-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .zeta-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--blue);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble code{ color:var(--gold); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--gold); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--blue); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--gold); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--blue); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--gold); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--blue); border:1px solid var(--blue-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(94,200,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'teste_execucao_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>TESTES DE JOGOS — EXECUÇÃO POR VERSÃO (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">10</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `teste_execucao_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Olá! Eu sou a <b>Zeta</b>, detetive de qualidade da PixelForge Studios — minha lupa 🔍 encontra pistas de bug antes do jogador encontrar. Todo jogo passa por um <b>ciclo de versões</b> antes de chegar na loja: primeiro a <b>Alfa</b>, depois a <b>Beta</b>, em seguida a <b>Release Candidate</b> e, por fim, a <b>Gold</b>. Cada fase tem um objetivo diferente — e um "suspeito" (bug) que passa despercebido numa fase pode virar um caso urgente na próxima.',
+      question: {
+        prompt: 'Qual é a ordem correta do ciclo de versões de um jogo, da mais inicial até a mais final?',
+        options: [
+          'Alfa → Beta → Release Candidate → Gold',
+          'Gold → Release Candidate → Beta → Alfa',
+          'Beta → Alfa → Gold → Release Candidate',
+          'Não existe uma ordem, cada fase pode vir a qualquer momento'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! O ciclo caminha da fase mais interna e incompleta (Alfa) até a versão final pronta pra distribuir (Gold), passando por Beta e Release Candidate no meio do caminho.'
+      }
+    },
+    {
+      story: 'A fase <b>Alfa</b> é a mais "crua" de todas: só a própria equipe da PixelForge joga, e várias funcionalidades ainda nem existem ou estão pela metade. O foco aqui é caçar <b>bugs estruturais</b> — problemas grandes, na fundação do jogo (uma mecânica inteira quebrada, um sistema que trava o jogo) — antes de gastar tempo poli mento detalhes.',
+      question: {
+        prompt: 'Um jogo da PixelForge só é jogado internamente pela própria equipe, com metade das fases ainda não implementadas, e o time está caçando problemas grandes na fundação do jogo. Em qual fase do ciclo ele está?',
+        options: [
+          'Alfa',
+          'Beta',
+          'Release Candidate',
+          'Gold'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Testado só pela equipe interna, com partes incompletas e foco em bugs estruturais — essa é a marca registrada da fase Alfa.'
+      }
+    },
+    {
+      story: 'Depois da Alfa vem a <b>Beta</b>: agora o jogo já sai da PixelForge e chega às mãos de <b>testers externos</b> (um grupo fechado convidado, ou até uma beta aberta pra qualquer um). O foco muda: menos "isso está quebrado por dentro" e mais "isso é confuso/chato de usar" — bugs de usabilidade e do dia a dia de quem joga de verdade, sem conhecer os bastidores.',
+      question: {
+        prompt: 'Um grupo de jogadores de fora da empresa está testando o jogo e mandando feedback sobre controles confusos e telas difíceis de entender. Que fase é essa?',
+        options: [
+          'Beta',
+          'Alfa',
+          'Release Candidate',
+          'Gold'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! Testers externos avaliando usabilidade e experiência do dia a dia — esse é o papel central da fase Beta.'
+      }
+    },
+    {
+      story: 'A <b>Release Candidate</b> (RC) é a fase da reta final: essa versão é uma "candidata" séria a virar a versão oficial. A partir daqui, a régua muda de verdade — só um <b>bug crítico</b> (algo que trava o jogo, corrompe dados ou impede de jogar) pode segurar o lançamento. Detalhes pequenos e cosméticos já não travam mais nada nessa altura.',
+      question: {
+        prompt: 'Numa certa fase, a equipe só aceita atrasar o lançamento se aparecer um bug classificado como crítico — pequenos ajustes visuais não seguram mais nada. Que fase é essa?',
+        options: [
+          'Release Candidate',
+          'Alfa',
+          'Beta',
+          'Gold'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! "Só bug crítico trava o lançamento" é exatamente o critério que caracteriza a Release Candidate — a régua de qualidade sobe bastante nessa fase.'
+      }
+    },
+    {
+      story: 'Quando a Release Candidate passa por todos os crivos sem nenhum bug crítico pendente, ela é promovida a <b>Gold</b>: a versão final, aprovada, pronta pra ser distribuída/publicada pros jogadores de verdade. É o fim da linha do ciclo de versões — a partir daqui, o jogo está no mercado.',
+      question: {
+        prompt: 'Uma versão do jogo já foi aprovada em todos os testes e está pronta pra ir pra loja/distribuição pros jogadores finais. Que versão é essa?',
+        options: [
+          'Gold',
+          'Alfa',
+          'Beta',
+          'Release Candidate'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! "Aprovada e pronta pra distribuir" é a definição da versão Gold — o fim do ciclo de versões.'
+      }
+    },
+    {
+      story: 'Nem tudo em testes precisa ser feito clicando manualmente em cada botão. Um <b>framework de teste</b> é uma ferramenta que roda um conjunto de testes sozinha, na velocidade da máquina, e já registra o resultado — passou ou falhou — sem precisar de uma pessoa clicando em cada tela, uma por uma, toda vez que o código muda.',
+      question: {
+        prompt: 'Em vez de um testador clicar manualmente em cada botão do jogo pra verificar se ainda funciona, a equipe usa uma ferramenta que roda esses testes sozinha e mostra o resultado automaticamente. Que recurso é esse?',
+        options: [
+          'Um framework de teste',
+          'Um teste de mesa',
+          'A versão Gold do jogo',
+          'Um roteiro de execução em papel'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Automatizar a execução e o registro dos testes, sem depender de clique manual repetido, é justamente pra isso que serve um framework de teste.'
+      }
+    },
+    {
+      story: 'Organizar o <b>ambiente de testes</b> é outro cuidado importante: ele deve ficar separado do ambiente de desenvolvimento e, principalmente, do ambiente de <b>produção</b> (o que os jogadores de verdade usam). Rodar testes usando contas e dados reais de jogadores é arriscado — pode corromper progresso de gente de verdade só pra validar uma mudança de código.',
+      question: {
+        prompt: 'Um testador da PixelForge está rodando testes de uma nova funcionalidade usando o mesmo banco de dados e as mesmas contas dos jogadores reais do jogo. Qual é o problema nessa prática?',
+        options: [
+          'O ambiente de teste deveria ser separado da produção, com dados próprios — testar em cima de dados reais arrisca corromper o progresso de jogadores de verdade',
+          'Não tem problema nenhum, faz parte do processo normal de testes',
+          'O problema é só de desempenho, nada relacionado a segurança dos dados',
+          'Isso só seria um problema durante a fase Alfa'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Ambiente de teste e ambiente de produção precisam ficar separados — testar em cima de dados reais de jogadores é um risco desnecessário.'
+      }
+    },
+    {
+      story: 'Um bom <b>roteiro de execução</b> é uma lista de passos reproduzíveis, na ordem certa, pra testar um caso específico. A ideia é simples: qualquer pessoa do time, seguindo o mesmo roteiro, deve chegar ao mesmo resultado — sem depender de "decorar" o caminho ou improvisar a ordem dos cliques.',
+      question: {
+        prompt: 'Dois testadores da PixelForge testaram o mesmo caso, mas cada um seguiu uma ordem de passos diferente e chegou a resultados diferentes. O que está faltando nesse processo de teste?',
+        options: [
+          'Um roteiro de execução reproduzível, com passos claros e na mesma ordem pra qualquer pessoa do time',
+          'Uma versão Gold do jogo, isso resolveria o problema',
+          'Mais testadores fazendo o mesmo teste ao mesmo tempo',
+          'Trocar o framework de teste usado pela equipe'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Sem um roteiro reproduzível, cada pessoa testa "do seu jeito" — e resultados diferentes pro mesmo caso põem em dúvida qual teste está certo.'
+      }
+    },
+    {
+      story: 'Corrigir um bug não é o fim da história: depois do conserto, é preciso fazer o <b>reteste</b> — rodar de novo o MESMO caso de teste que originalmente encontrou o problema, pra confirmar que ele realmente sumiu (e que a correção não quebrou outra coisa no processo).',
+      question: {
+        prompt: 'Um programador da PixelForge corrigiu um bug ontem, mas ninguém rodou de novo o caso de teste que originalmente encontrou aquele problema. O que está faltando nesse processo?',
+        options: [
+          'O reteste — rodar de novo o mesmo caso de teste pra confirmar que o bug realmente sumiu',
+          'Nada, uma vez corrigido o código, o bug nunca mais pode voltar',
+          'Trocar a versão do jogo de Beta pra Gold imediatamente',
+          'Escrever um roteiro de execução novo do zero'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Corrigir o código não garante nada sozinho — só o reteste confirma de fato que aquele bug específico não aparece mais.'
+      }
+    },
+    {
+      story: 'Por fim, avançar de uma fase pra outra (de Beta pra Release Candidate, por exemplo) não deveria ser "no feeling": a equipe define um <b>critério de avanço</b> — um conjunto de condições que precisam estar OK antes de seguir em frente. É um "portão de qualidade" (gate) que impede o time de avançar cedo demais, com problemas sérios ainda em aberto. Agora você já reconhece o ciclo Alfa-Beta-RC-Gold, frameworks de teste, ambiente de testes, roteiro de execução, reteste e critério de avanço!',
+      question: {
+        prompt: 'A equipe da PixelForge quer decidir se já pode avançar da fase Beta pra Release Candidate, mas ninguém definiu quais condições precisam estar cumpridas antes desse avanço. O que está faltando?',
+        options: [
+          'Um critério de avanço entre versões (gate de qualidade) definido antecipadamente',
+          'Mais uma rodada de testes na fase Alfa, voltando ao início do ciclo',
+          'Publicar a versão Gold direto, pulando a Release Candidate',
+          'Nenhum critério é necessário, a decisão pode ser aleatória'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Sem um critério de avanço combinado antes, a decisão de mudar de fase fica no "achismo" — o gate de qualidade existe justamente pra evitar isso.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Testes de Jogos Digitais — Execução de Testes por Versão',
+      subtitle: 'Aula Teórica · Trilha Execução de Testes por Versão · Turma Jogos Digitais',
+      capacidade: 'Desenvolver plano de testes / Organizar o ambiente para o desenvolvimento das rotinas de testes / Definir roteiro de teste para execução, conforme recomendações técnicas.',
+      steps: STEPS,
+      fileName: 'teste-execucao-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central de QA: Execução de Testes por Versão" no Portal de Aulas para os alunos resolverem os chamados de verdade.'
+    });
+  };
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Testes de Jogos Digitais — Execução de Testes por Versão',
+      subtitle: 'Aula Teórica · Trilha Execução de Testes por Versão · Turma Jogos Digitais',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'teste-execucao-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('teste_execucao_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Testes de Jogos — Execução por Versão — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'zeta-row';
+    row.innerHTML = `
+      <div class="zeta-avatar">🔍</div>
+      <div class="speech-bubble">
+        <span class="zeta-name">Zeta, a Detetive de Qualidade</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Testes de Jogos — Execução por Versão — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Testes de Jogos — Execução por Versão — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Execução de Testes por Versão concluída!</h2>
+        <p>Você já reconhece o ciclo Alfa → Beta → Release Candidate → Gold, frameworks de teste, ambiente de testes, roteiro de execução, reteste e critério de avanço entre fases.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a lupa em ação: volte à trilha e abra o módulo de prática da Central de QA.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

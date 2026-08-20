@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Jogos: Central de Codificação</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--blue); color:var(--blue); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,59,48,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(94,200,255,0.15); color:var(--blue); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--blue); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--gold); }
+
+  .explanation-box{
+    background:#060810; border:1px solid var(--blue-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--blue); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--gold); }
+  .explanation-box pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:6px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--gold); white-space:pre;
+  }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--gold); border:1px solid var(--blue-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(224,184,74,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--gold);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--gold); }
+
+  textarea#codeInput{
+    width:100%; flex:1; min-height:60px; resize:vertical; background:#000; color:var(--blue);
+    border:1px solid var(--line); font-family:'JetBrains Mono', monospace; font-size:12px;
+    padding:10px; outline:none; line-height:1.5;
+  }
+  textarea#codeInput:focus{ border-color:var(--blue); }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .console{
+    background:#050710; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.pass{ color:var(--blue); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--blue); font-weight:bold; }
+  .console .line.warn{ color:var(--gold); }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    textarea#codeInput{ min-height:110px; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'cod_agil_clean_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>CODIFICAÇÃO — OFICINA DE CÓDIGO (ÁGIL E CLEAN CODE)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🐞</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <textarea id="codeInput" spellcheck="false"></textarea>
+
+        <div class="actions">
+          <button class="btn" id="btnRun">▶ Executar</button>
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `cod_agil_clean_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Soma copiada em três lugares',
+      icon: '♻️',
+      explanation: 'O princípio <b>DRY</b> (Don’t Repeat Yourself) diz: se a mesma conta aparece em vários lugares do código, ela deveria virar uma única função reaproveitável.<pre>function metros(cm) {\n  return cm / 100;\n}</pre>Assim, em vez de escrever <code>cm / 100</code> toda vez, você chama <code>metros(cm)</code>.',
+      desc: 'A tela de checkout da loja da PixelForge soma <code>dinheiro + cartao + pix</code> copiado em três telas diferentes. Centralize essa conta numa função só: complete <code>custoTotal(dinheiro, cartao, pix)</code> retornando a soma dos três valores.',
+      hint: 'É só somar os três parâmetros recebidos — pense em qual operador junta valores numéricos.',
+      fnName: 'custoTotal',
+      starter: 'function custoTotal(dinheiro, cartao, pix) {\n  // retorne a soma de dinheiro + cartao + pix\n\n}',
+      tests: [
+        { args: [10, 20, 30], expected: 60 },
+        { args: [0, 0, 0], expected: 0 },
+        { args: [50, 0, 25], expected: 75 }
+      ]
+    },
+    {
+      id: 2,
+      title: 'O número 100 solto no código',
+      icon: '🔢',
+      explanation: 'Um <b>"número mágico"</b> é um valor solto no meio do código sem explicação (tipo um <code>100</code> aparecendo do nada). Clean Code prefere dar nome a esse valor com uma <b>constante</b>:<pre>const LIMITE_ESTOQUE = 50;\nfunction faltam(vendidos) {\n  return LIMITE_ESTOQUE - vendidos;\n}</pre>Assim, quem lê o código entende o que aquele número significa, e se o valor mudar um dia, muda num lugar só.',
+      desc: 'A vida máxima de um personagem da PixelForge é sempre <b>100</b> — em vez de escrever esse número solto, use a constante <code>VIDA_MAXIMA</code> já declarada no editor. Complete <code>vidaRestante(dano)</code> retornando <code>VIDA_MAXIMA</code> menos o dano recebido.',
+      hint: 'Use a constante <code>VIDA_MAXIMA</code> que já está declarada acima da função — não escreva o número 100 direto na conta.',
+      fnName: 'vidaRestante',
+      starter: 'const VIDA_MAXIMA = 100;\n\nfunction vidaRestante(dano) {\n  // retorne VIDA_MAXIMA menos dano (use a constante, não o número solto)\n\n}',
+      tests: [
+        { args: [30], expected: 70 },
+        { args: [0], expected: 100 },
+        { args: [100], expected: 0 }
+      ]
+    },
+    {
+      id: 3,
+      title: 'Validação copiada em três formulários',
+      icon: '🏷️',
+      explanation: 'Outro caso clássico de <b>DRY</b>: a mesma regra de validação (nome, apelido, nome de guilda) copiada em vários formulários. Centralizar numa função evita que, se a regra mudar, alguém esqueça de atualizar uma das cópias.<pre>function idadeValida(idade) {\n  return idade >= 0 && idade <= 120;\n}</pre>',
+      desc: 'Cadastro de personagem, de guilda e de apelido repetem a mesma validação de nome. Centralize numa função só: complete <code>nomeValido(nome)</code> retornando <b>true</b> se <code>nome</code> tiver pelo menos <b>3 caracteres</b> (ignorando espaços em branco no início/fim), e <b>false</b> caso contrário.',
+      hint: 'Strings têm um método pra remover espaços das pontas antes de checar o tamanho — procure por algo relacionado a "trim" ou "aparar".',
+      fnName: 'nomeValido',
+      starter: 'function nomeValido(nome) {\n  // retorne true se nome (sem espaços nas pontas) tiver pelo menos 3 caracteres\n\n}',
+      tests: [
+        { args: ['Eri'], expected: true },
+        { args: ['Al'], expected: false },
+        { args: ['   '], expected: false },
+        { args: ['Guardião'], expected: true }
+      ]
+    },
+    {
+      id: 4,
+      title: 'A lista não pode mudar sozinha',
+      icon: '⚠️',
+      explanation: 'Uma <b>função pura</b> não altera (não tem "efeito colateral" em) os dados que recebeu — ela devolve um resultado NOVO, sem mexer no original.<pre>function comEconomia(precos, i) {\n  return precos.filter((_, idx) => idx !== i);\n}\n// o array "precos" original continua intacto depois da chamada</pre>Isso evita bugs em que outra parte do jogo ainda esperava a lista antiga intacta.',
+      desc: 'Outras telas da PixelForge ainda precisam da lista de inimigos original depois da chamada. Complete <code>semItem(lista, id)</code> retornando um <b>novo</b> array sem o item cujo <code>id</code> foi passado, <b>sem alterar</b> o array <code>lista</code> recebido.',
+      hint: 'Existe um método de array que já devolve uma NOVA lista filtrada, sem tocar no array original — pesquise por métodos relacionados a "filtrar".',
+      fnName: 'semItem',
+      starter: 'function semItem(lista, id) {\n  // retorne um NOVO array sem o item de id igual a "id", sem alterar "lista"\n\n}',
+      tests: [
+        {
+          args: [[{ id: 1 }, { id: 2 }, { id: 3 }], 2],
+          check: (r, lista) => JSON.stringify(r) === JSON.stringify([{ id: 1 }, { id: 3 }])
+                                && JSON.stringify(lista) === JSON.stringify([{ id: 1 }, { id: 2 }, { id: 3 }]),
+          expectedLabel: 'novo array sem o id 2, e o array original intacto'
+        },
+        {
+          args: [[{ id: 5 }], 5],
+          check: (r) => JSON.stringify(r) === JSON.stringify([]),
+          expectedLabel: 'array vazio'
+        }
+      ]
+    },
+    {
+      id: 5,
+      title: 'If/else emaranhado pro acesso VIP',
+      icon: '🔀',
+      explanation: 'Clean Code evita condicionais emaranhadas quando uma comparação simples já resolve. Uma expressão booleana já vale <code>true</code> ou <code>false</code> sozinha — não precisa de <code>if/else</code> pra devolvê-la:<pre>function ehMaiorDeIdade(idade) {\n  return idade >= 18;\n}</pre>',
+      desc: 'A área VIP da PixelForge libera acesso pra quem tem <b>nível 10 ou mais</b>, OU já é <b>VIP</b>. Complete <code>acessoLiberado(nivel, vip)</code> retornando <b>true</b> ou <b>false</b>, num código limpo e direto (sem <code>if/else</code> desnecessário).',
+      hint: 'Pense em como juntar duas condições numa expressão só, que já vale <code>true</code> quando QUALQUER uma delas for verdadeira — que operador lógico faz isso?',
+      fnName: 'acessoLiberado',
+      starter: 'function acessoLiberado(nivel, vip) {\n  // retorne true se nivel >= 10 OU vip for true\n\n}',
+      tests: [
+        { args: [12, false], expected: true },
+        { args: [5, true], expected: true },
+        { args: [5, false], expected: false },
+        { args: [10, false], expected: true }
+      ]
+    },
+    {
+      id: 6,
+      title: 'Pontuação formatada na mão, toda vez',
+      icon: '📝',
+      explanation: 'Mais um caso de <b>DRY</b>: formatar um texto do mesmo jeito em várias telas (placar, ranking, perfil) é sinal de que essa formatação merece virar uma função só, reaproveitada em todo lugar.<pre>function comSinal(n) {\n  return (n >= 0 ? \'+\' : \'\') + n;\n}</pre>',
+      desc: 'O placar, o ranking e o perfil do jogador formatam a pontuação cada um do seu jeito. Centralize: complete <code>formatarPontuacao(pontos)</code> retornando uma string no formato <code>"{pontos} pts"</code> (ex.: para 100, retornar <code>"100 pts"</code>).',
+      hint: 'Você pode montar a string juntando o número com o texto " pts" — pesquise sobre template strings (crase + chaves) ou concatenação com <code>+</code>.',
+      fnName: 'formatarPontuacao',
+      starter: 'function formatarPontuacao(pontos) {\n  // retorne uma string no formato "{pontos} pts", ex: "100 pts"\n\n}',
+      tests: [
+        { args: [100], expected: '100 pts' },
+        { args: [0], expected: '0 pts' }
+      ]
+    },
+    {
+      id: 7,
+      title: 'A mesma divisão, de novo',
+      icon: '🧩',
+      explanation: '<b>Modularização</b> não é só criar funções pequenas — é também REAPROVEITAR as que já existem, em vez de reescrever a mesma lógica na mão de novo.<pre>function dobro(n) { return n * 2; }\nfunction areaDobrada(lado) {\n  return dobro(lado * lado); // reaproveita dobro() em vez de "* 2" solto de novo\n}</pre>',
+      desc: 'A função <code>metade(n)</code> já existe no editor (calcula a metade de um número). Complete <code>distanciaCentro(largura)</code> retornando a metade da largura recebida — mas <b>reaproveitando a função <code>metade()</code></b> já pronta, em vez de escrever a divisão de novo.',
+      hint: 'Você já tem uma função pronta ali em cima que faz exatamente essa conta — reaproveite ela em vez de escrever a divisão de novo.',
+      fnName: 'distanciaCentro',
+      starter: 'function metade(n) {\n  return n / 2;\n}\n\nfunction distanciaCentro(largura) {\n  // reaproveite a função metade() acima em vez de repetir a divisão\n\n}',
+      tests: [
+        { args: [800], expected: 400 },
+        { args: [100], expected: 50 }
+      ]
+    },
+    {
+      id: 8,
+      title: 'Contando ativos em cada tela',
+      icon: '🧮',
+      explanation: 'Mais uma repetição comum de contar-e-filtrar espalhada pelo código: centralizar numa função evita que cada tela implemente a própria versão (e talvez com bugs diferentes entre si).<pre>function contarPares(numeros) {\n  return numeros.filter(n => n % 2 === 0).length;\n}</pre>',
+      desc: 'Várias telas da PixelForge precisam saber quantos itens de uma lista estão com <code>ativo: true</code>. Centralize: complete <code>contarAtivos(lista)</code> retornando quantos itens do array têm a propriedade <code>ativo</code> igual a <code>true</code>.',
+      hint: 'Combine um método de array que filtra por uma condição com a propriedade <code>.length</code> do resultado.',
+      fnName: 'contarAtivos',
+      starter: 'function contarAtivos(lista) {\n  // retorne quantos itens de "lista" têm item.ativo === true\n\n}',
+      tests: [
+        { args: [[{ ativo: true }, { ativo: false }, { ativo: true }]], expected: 2 },
+        { args: [[]], expected: 0 },
+        { args: [[{ ativo: false }]], expected: 0 }
+      ]
+    },
+    {
+      id: 9,
+      title: 'A refatoração que mudou o resultado',
+      icon: '🔒',
+      explanation: 'Refatorar significa melhorar a ESTRUTURA interna do código sem mudar o que ele calcula pra fora. Se o resultado muda pros mesmos valores de entrada, isso não é mais refatoração pura — é uma mudança de comportamento escondida.',
+      desc: 'A fórmula antiga de dano da PixelForge era <code>base vezes multiplicador</code>, espalhada em vários lugares. Ao centralizar numa função só, o resultado pros mesmos valores de entrada <b>precisa continuar idêntico</b> ao de antes. Complete <code>calcularDanoFinal(base, multiplicador)</code> retornando exatamente essa conta.',
+      hint: 'A fórmula já existia antes de virar função — é só reproduzir exatamente "base vezes multiplicador".',
+      fnName: 'calcularDanoFinal',
+      starter: 'function calcularDanoFinal(base, multiplicador) {\n  // retorne base * multiplicador (mesma fórmula de sempre, só que centralizada aqui)\n\n}',
+      tests: [
+        { args: [10, 3], expected: 30 },
+        { args: [5, 0], expected: 0 },
+        { args: [7, 1], expected: 7 }
+      ]
+    },
+    {
+      id: 10,
+      title: 'CHAMADO FINAL: Resumo do Personagem',
+      icon: '🏆',
+      explanation: 'Este chamado combina o que você já resolveu: usar uma constante nomeada em vez de número mágico (como no chamado 2) e devolver um resultado novo, sem efeitos colaterais (como no chamado 4) — só que agora devolvendo um <b>objeto</b> com mais de um valor calculado.<pre>function resumoPreco(preco, desconto) {\n  return { precoFinal: preco - desconto, percentualPago: Math.round(((preco - desconto) / preco) * 100) };\n}</pre>',
+      desc: 'Complete <code>resumoPersonagem(vida, dano)</code> usando a constante <code>VIDA_MAXIMA</code> já declarada, retornando um objeto <code>{ vidaRestante, percentual }</code>, onde <code>vidaRestante</code> é <code>vida - dano</code> e <code>percentual</code> é o arredondamento de <code>(vidaRestante / VIDA_MAXIMA) * 100</code>.',
+      hint: 'Calcule vidaRestante primeiro (numa variável), depois use ela pra calcular o percentual — e lembre de arredondar o percentual com <code>Math.round()</code>.',
+      fnName: 'resumoPersonagem',
+      starter: 'const VIDA_MAXIMA = 100;\n\nfunction resumoPersonagem(vida, dano) {\n  // retorne { vidaRestante, percentual }\n  // vidaRestante = vida - dano\n  // percentual = Math.round((vidaRestante / VIDA_MAXIMA) * 100)\n\n}',
+      tests: [
+        {
+          args: [100, 30],
+          check: r => r && r.vidaRestante === 70 && r.percentual === 70,
+          expectedLabel: '{ vidaRestante: 70, percentual: 70 }'
+        },
+        {
+          args: [100, 0],
+          check: r => r && r.vidaRestante === 100 && r.percentual === 100,
+          expectedLabel: '{ vidaRestante: 100, percentual: 100 }'
+        }
+      ]
+    }
+  ];
+
+  // Exposto sempre (não só quando o botão local aparece) pra a aba "Gestão"
+  // do portal da turma conseguir chamar isso remotamente, num iframe oculto,
+  // e baixar um .txt com enunciado + critério de avaliação (testes) de cada
+  // chamado — aqui não existe UMA resposta certa em texto, e sim um valor
+  // esperado por combinação de argumentos, então o gabarito lista os casos.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Codificação de Jogos: Central — Metodologia Ágil e Clean Code',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        answer: c.tests.map(t => {
+          const inputs = (t.args || []).map(a => JSON.stringify(a)).join(', ');
+          const exp = ('expected' in t) ? JSON.stringify(t.expected) : (t.expectedLabel || 'ver critério no código-fonte');
+          return `${c.fnName}(${inputs}) deve retornar ${exp}`;
+        }).join('\n')
+      })),
+      fileName: 'cod-agil-clean-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const codeInput = document.getElementById('codeInput');
+  const btnRun = document.getElementById('btnRun');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🐞' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function deepEqual(a, b) {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
+    }
+    return a === b;
+  }
+
+  function runChallenge() {
+    const challenge = CHALLENGES.find(c => c.id === selectedId);
+    if (!challenge) return;
+    clearConsole();
+
+    let fn;
+    try {
+      fn = new Function(`${codeInput.value}\nreturn typeof ${challenge.fnName} === 'function' ? ${challenge.fnName} : undefined;`)();
+    } catch (err) {
+      logConsole('Erro de sintaxe: ' + err.message, 'fail');
+      return;
+    }
+
+    if (typeof fn !== 'function') {
+      logConsole(`A função '${challenge.fnName}' não foi encontrada. Verifique o nome da função.`, 'fail');
+      return;
+    }
+
+    let allPass = true;
+    challenge.tests.forEach((t, i) => {
+      let result, errorMsg = null;
+      try {
+        result = fn(...t.args);
+      } catch (err) {
+        errorMsg = err.message;
+      }
+
+      let pass;
+      if (errorMsg !== null) {
+        pass = false;
+      } else if (typeof t.check === 'function') {
+        pass = t.check(result, ...t.args);
+      } else {
+        pass = deepEqual(result, t.expected);
+      }
+      if (!pass) allPass = false;
+
+      const argsStr = t.args.map(a => JSON.stringify(a)).join(', ');
+      const expectedStr = t.expectedLabel ? t.expectedLabel : JSON.stringify(t.expected);
+
+      if (pass) {
+        logConsole(`[Teste ${i + 1}] ${challenge.fnName}(${argsStr}) → ${JSON.stringify(result)} ✅`, 'pass');
+      } else if (errorMsg) {
+        logConsole(`[Teste ${i + 1}] ${challenge.fnName}(${argsStr}) → Erro: ${errorMsg} ❌`, 'fail');
+      } else {
+        logConsole(`[Teste ${i + 1}] ${challenge.fnName}(${argsStr}) → ${JSON.stringify(result)} (esperado ${expectedStr}) ❌`, 'fail');
+      }
+    });
+
+    if (allPass) {
+      completed.add(challenge.id);
+      saveCompleted(completed);
+      ticketStatusEl.textContent = 'RESOLVIDO';
+      ticketStatusEl.classList.add('done');
+      ticketStatusEl.classList.remove('pending');
+
+      const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+      if (isLast) {
+        logConsole('🏆 Parecer emitido! Você resolveu todos os chamados de Metodologia Ágil e Clean Code!', 'success');
+      } else {
+        logConsole('✅ Parecer emitido! Próximo chamado liberado.', 'success');
+        btnNext.style.display = 'inline-block';
+      }
+      renderSidebar();
+
+      if (typeof window.reportActivity === 'function') {
+        window.reportActivity(
+          'cod_agil_clean_pratica',
+          `Codificação — Ágil e Clean Code — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+          { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+        );
+      }
+    } else {
+      logConsole('❌ Ainda não é isso. Ajuste o código e tente de novo.', 'warn');
+    }
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    codeInput.value = challenge.starter;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) logConsole('Você já resolveu este chamado. Pode treinar de novo.', 'info');
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'cod_agil_clean_pratica',
+        `Codificação — Ágil e Clean Code — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnRun.addEventListener('click', runChallenge);
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

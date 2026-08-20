@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — JavaScript Intermediário</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d0a; --panel:#10140f; --panel2:#0d110c; --line:#223022;
+    --green:#7cff3f; --green-dim:#4a9a2a; --blood:#c1121f; --blood-bright:#ff3b30;
+    --yellow:#d4c86a; --ink:#d9e6d2; --ink-dim:#6f8368;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--green-dim); background:#050805;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(124,255,63,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:190px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--green); color:var(--green); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .enemy-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .enemy-avatar{ font-size:32px; line-height:1; filter:drop-shadow(0 0 6px rgba(255,59,48,0.4)); }
+  .enemy-info{ flex:1; min-width:0; }
+  .enemy-name{ font-size:11.5px; color:var(--yellow); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+  .hp-bar-track{ width:100%; height:8px; background:#1a221a; border:1px solid var(--line); overflow:hidden; }
+  .hp-bar-fill{ height:100%; width:100%; background:var(--blood-bright); transition:width 0.6s ease; }
+  .hp-bar-fill.defeated{ width:0%; background:var(--ink-dim); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--green); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--yellow); }
+
+  .explanation-box{
+    background:#081208; border:1px solid var(--green-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--green); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--yellow); }
+  .explanation-box pre{
+    background:#000; border:1px solid var(--line); padding:8px; margin:6px 0 0;
+    overflow-x:auto; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--yellow); white-space:pre;
+  }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--yellow); border:1px solid var(--green-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(212,200,106,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--yellow);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--yellow); }
+
+  textarea#codeInput{
+    width:100%; flex:1; min-height:60px; resize:vertical; background:#000; color:var(--green);
+    border:1px solid var(--line); font-family:'JetBrains Mono', monospace; font-size:12px;
+    padding:10px; outline:none; line-height:1.5;
+  }
+  textarea#codeInput:focus{ border-color:var(--green); }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--green); color:#04220a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--green); border:1px solid var(--green-dim); }
+
+  .console{
+    background:#060806; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.pass{ color:var(--green); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--green); font-weight:bold; }
+  .console .line.warn{ color:var(--yellow); }
+
+  /* Celular/telas estreitas: a barra lateral + painel lado a lado espreme
+     demais o conteúdo (texto quebrando palavra a palavra). Empilha tudo
+     numa coluna só e deixa a página inteira rolar, em vez de depender de
+     várias regiões de scroll aninhadas. */
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    textarea#codeInput{ min-height:110px; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'js_intermediario';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JAVASCRIPT — ARENA DE DUELOS (INTERMEDIÁRIO)</div>
+    <div>VITÓRIAS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Adversários</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="enemy-row">
+            <div class="enemy-avatar" id="enemyAvatar">🟢</div>
+            <div class="enemy-info">
+              <div class="enemy-name" id="enemyName">--</div>
+              <div class="hp-bar-track"><div class="hp-bar-fill" id="hpBarFill"></div></div>
+            </div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <textarea id="codeInput" spellcheck="false"></textarea>
+
+        <div class="actions">
+          <button class="btn" id="btnRun">⚔ Atacar!</button>
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo duelo →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `js_intermediario_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Feitiço da Variável',
+      enemyName: 'Slime de Bits',
+      enemyEmoji: '🟢',
+      fnName: 'contraAtaque',
+      starter: 'function contraAtaque(poderInimigo) {\n  // retorne um valor MAIOR que poderInimigo\n\n}',
+      explanation: 'Uma <b>função</b> é um bloco de código reutilizável. Ela pode receber valores, chamados de <b>parâmetros</b>, e devolver um resultado com a palavra <code>return</code>.<pre>function dobrar(numero) {\n  return numero * 2;\n}</pre>Aqui, <code>dobrar</code> é o nome da função e <code>numero</code> é o parâmetro que ela recebe. Neste duelo, complete <code>contraAtaque(poderInimigo)</code> — ela já recebe o poder do inimigo como parâmetro, chamado <code>poderInimigo</code> dentro da função.',
+      desc: 'O <b>Slime de Bits</b> 🟢 lança um feitiço de poder <code>poderInimigo</code>. Complete <code>contraAtaque(poderInimigo)</code> retornando um número <b>maior</b> que o poder recebido, para superá-lo.',
+      hint: 'Pense numa operação simples com <code>poderInimigo</code> que sempre resulte em algo maior que ele — não precisa ser complicado.',
+      tests: [
+        { args: [10], check: (r, inp) => typeof r === 'number' && r > inp, expectedLabel: 'número maior que 10' },
+        { args: [50], check: (r, inp) => typeof r === 'number' && r > inp, expectedLabel: 'número maior que 50' },
+        { args: [0], check: (r, inp) => typeof r === 'number' && r > inp, expectedLabel: 'número maior que 0' }
+      ]
+    },
+    {
+      id: 2,
+      title: 'Feitiço do Sinal Trocado',
+      enemyName: 'Bruxo Reverso',
+      enemyEmoji: '🔮',
+      fnName: 'inverterFeitico',
+      starter: 'function inverterFeitico(n) {\n  // devolva o valor absoluto (positivo) de n\n\n}',
+      explanation: 'JavaScript já vem com funções prontas para usar. Uma delas é <code>Math.abs()</code>, que transforma qualquer número em positivo.<pre>Math.abs(-5)   // resultado: 5\nMath.abs(3)    // resultado: 3</pre>Você pode usar o resultado dela dentro do seu <code>return</code>.',
+      desc: 'O <b>Bruxo Reverso</b> 🔮 tenta drenar seu poder com números negativos. Complete <code>inverterFeitico(n)</code> retornando o valor absoluto (positivo) de <code>n</code>, neutralizando o feitiço.',
+      hint: 'O objeto <code>Math</code> tem uma função pronta pra isso — procure por algo relacionado a "valor absoluto".',
+      tests: [
+        { args: [-7], expected: 7 },
+        { args: [5], expected: 5 },
+        { args: [-100], expected: 100 },
+        { args: [0], expected: 0 }
+      ]
+    },
+    {
+      id: 3,
+      title: 'Escudo Par/Ímpar',
+      enemyName: 'Guardião Binário',
+      enemyEmoji: '🛡️',
+      fnName: 'escudoAtivo',
+      starter: 'function escudoAtivo(n) {\n  // retorne true se n for par, false se for ímpar\n\n}',
+      explanation: 'O operador <code>%</code> (resto da divisão) devolve o que sobra de uma divisão.<pre>10 % 2   // resultado: 0 (divisão exata, é par)\n7 % 2    // resultado: 1 (sobra 1, é ímpar)</pre>Uma comparação com <code>===</code> já resulta em <code>true</code> ou <code>false</code> sozinha — você pode devolver esse resultado direto com <code>return</code>, sem precisar de <code>if/else</code>.',
+      desc: 'O <b>Guardião Binário</b> 🛡️ só fica vulnerável quando a energia recebida é <b>par</b>. Complete <code>escudoAtivo(n)</code> retornando <b>true</b> se n for par e <b>false</b> se for ímpar.',
+      hint: 'Existe um operador que devolve o resto de uma divisão. Como ele te ajuda a saber se um número é par?',
+      tests: [
+        { args: [4], expected: true },
+        { args: [7], expected: false },
+        { args: [0], expected: true },
+        { args: [-3], expected: false }
+      ]
+    },
+    {
+      id: 4,
+      title: 'Comparar Exércitos',
+      enemyName: 'Legião de Sombras',
+      enemyEmoji: '👥',
+      fnName: 'liderDoExercito',
+      starter: 'function liderDoExercito(poderes) {\n  // retorne o maior valor do array poderes\n\n}',
+      explanation: 'Um <b>array</b> é uma lista de valores guardada em uma única variável.<pre>let numeros = [3, 7, 2];</pre>Para achar o maior valor de um array, você pode usar <code>Math.max(...numeros)</code> — o <code>...</code> espalha os itens do array como se fossem parâmetros separados.',
+      desc: 'A <b>Legião de Sombras</b> 👥 invoca um exército com vários níveis de poder. Complete <code>liderDoExercito(poderes)</code> retornando o maior valor do array — o líder que vai lutar por você.',
+      hint: 'Você pode percorrer o array guardando o maior valor visto até agora, ou procurar se o objeto <code>Math</code> já tem algo pronto pra isso.',
+      tests: [
+        { args: [[1, 5, 3]], expected: 5 },
+        { args: [[10, 2, 8]], expected: 10 },
+        { args: [[-5, -1, -10]], expected: -1 }
+      ]
+    },
+    {
+      id: 5,
+      title: 'Invocar Tropas',
+      enemyName: 'Exército Ancestral',
+      enemyEmoji: '⚔️',
+      fnName: 'invocarTropas',
+      starter: 'function invocarTropas(n) {\n  // retorne um array com os números de 1 até n (IDs das tropas)\n\n}',
+      explanation: 'Um <b>laço</b> <code>for</code> repete um trecho de código várias vezes. Você pode usar isso para ir montando um array aos poucos com <code>.push()</code>, que adiciona um item ao final.<pre>let lista = [];\nfor (let i = 1; i <= 3; i++) {\n  lista.push(i);\n}\n// lista agora é [1, 2, 3]</pre>',
+      desc: 'Para enfrentar o <b>Exército Ancestral</b> ⚔️ você precisa invocar tropas. Complete <code>invocarTropas(n)</code> retornando um array com os números de <b>1</b> até <b>n</b>, representando os IDs das tropas invocadas.',
+      hint: 'Comece com um array vazio e pense em como repetir uma ação de 1 até <code>n</code>, adicionando um número por vez.',
+      tests: [
+        { args: [3], expected: [1, 2, 3] },
+        { args: [5], expected: [1, 2, 3, 4, 5] },
+        { args: [1], expected: [1] }
+      ]
+    },
+    {
+      id: 6,
+      title: 'Somar Poder do Time',
+      enemyName: 'Coletivo de Mana',
+      enemyEmoji: '🔷',
+      fnName: 'poderTotal',
+      starter: 'function poderTotal(poderes) {\n  // retorne a soma de todos os valores do array\n\n}',
+      explanation: 'Para somar todos os itens de um array, você pode usar um laço somando um por um, ou o método pronto <code>.reduce()</code>:<pre>let numeros = [10, 20, 30];\nlet total = numeros.reduce((soma, item) => soma + item, 0);\n// total é 60</pre>',
+      desc: 'O <b>Coletivo de Mana</b> 🔷 só cai se você calcular corretamente a soma total do poder do seu time. Complete <code>poderTotal(poderes)</code> retornando a soma de todos os valores do array.',
+      hint: 'Pense em percorrer o array acumulando uma soma a cada item, ou pesquise se arrays têm algum método pronto pra "reduzir" seus valores a um só.',
+      tests: [
+        { args: [[10, 20, 30]], expected: 60 },
+        { args: [[5]], expected: 5 },
+        { args: [[]], expected: 0 },
+        { args: [[-5, 5]], expected: 0 }
+      ]
+    },
+    {
+      id: 7,
+      title: 'Seleção de Sobreviventes',
+      enemyName: 'Necromante Filtrador',
+      enemyEmoji: '☠️',
+      fnName: 'sobreviventes',
+      starter: 'function sobreviventes(vidas) {\n  // retorne um array só com os valores MAIORES que 0\n\n}',
+      explanation: 'O método <code>.filter()</code> cria um novo array só com os itens que passam num teste.<pre>let numeros = [1, -2, 3, -4];\nlet positivos = numeros.filter(n => n > 0);\n// positivos é [1, 3]</pre>',
+      desc: 'O <b>Necromante Filtrador</b> ☠️ só permite passar quem ainda tem vida. Complete <code>sobreviventes(vidas)</code> retornando um novo array contendo apenas os valores de <code>vidas</code> que forem <b>maiores que 0</b>.',
+      hint: 'Existe um método de array que cria uma nova lista mantendo só os itens que passam num teste — pesquise por métodos de array relacionados a "filtrar".',
+      tests: [
+        { args: [[5, -3, 2, 0, -1]], expected: [5, 2] },
+        { args: [[-1, -2]], expected: [] },
+        { args: [[10, 20]], expected: [10, 20] }
+      ]
+    },
+    {
+      id: 8,
+      title: 'Encantamento em Massa',
+      enemyName: 'Feiticeira Duplicadora',
+      enemyEmoji: '✨',
+      fnName: 'encantarTropas',
+      starter: 'function encantarTropas(poderes) {\n  // retorne um novo array com cada valor de poderes DOBRADO\n\n}',
+      explanation: 'O método <code>.map()</code> cria um novo array transformando cada item com uma função.<pre>let numeros = [1, 2, 3];\nlet triplicado = numeros.map(n => n * 3);\n// triplicado é [3, 6, 9]</pre>',
+      desc: 'A <b>Feiticeira Duplicadora</b> ✨ só cai se cada tropa tiver seu poder dobrado. Complete <code>encantarTropas(poderes)</code> retornando um novo array com cada valor de <code>poderes</code> multiplicado por <b>2</b>.',
+      hint: 'Existe um método de array que devolve uma nova lista aplicando uma transformação em cada item — pesquise por métodos relacionados a "mapear".',
+      tests: [
+        { args: [[1, 2, 3]], expected: [2, 4, 6] },
+        { args: [[0, -5]], expected: [0, -10] },
+        { args: [[]], expected: [] }
+      ]
+    },
+    {
+      id: 9,
+      title: 'Juramento da Guarda',
+      enemyName: 'Sentinela Coletiva',
+      enemyEmoji: '🛡️',
+      fnName: 'guardaCompleta',
+      starter: 'function guardaCompleta(vidas) {\n  // retorne true se TODOS os valores de vidas forem maiores que 0\n\n}',
+      explanation: 'O método <code>.every()</code> verifica se TODOS os itens de um array passam num teste, devolvendo <code>true</code> ou <code>false</code>.<pre>let numeros = [2, 4, 6];\nlet todosPares = numeros.every(n => n % 2 === 0);\n// todosPares é true</pre>',
+      desc: 'A <b>Sentinela Coletiva</b> 🛡️ só confia na guarda se TODOS os membros estiverem com vida. Complete <code>guardaCompleta(vidas)</code> retornando <b>true</b> se todos os valores do array forem maiores que 0, ou <b>false</b> caso contrário.',
+      hint: 'Existe um método de array que testa se TODOS os itens passam numa condição — pesquise por métodos relacionados a "todos" ou "every".',
+      tests: [
+        { args: [[1, 2, 3]], expected: true },
+        { args: [[1, -2, 3]], expected: false },
+        { args: [[]], expected: true }
+      ]
+    },
+    {
+      id: 10,
+      title: 'BOSS FINAL: Fúria Combinada',
+      enemyName: 'Dragão Binário',
+      enemyEmoji: '🐉',
+      fnName: 'furiaFinal',
+      starter: 'function furiaFinal(poderes) {\n  // retorne true se a soma dos poderes for MAIOR que 100\n\n}',
+      explanation: 'Este duelo combina duas coisas que você já aprendeu: somar os itens de um array (como no duelo anterior, com <code>.reduce()</code>) e comparar o resultado com <code>&gt;</code>.',
+      desc: 'BOSS FINAL: o <b>Dragão Binário</b> 🐉 só é derrotado se a soma do poder do seu time ultrapassar <b>100</b>. Complete <code>furiaFinal(poderes)</code> retornando <b>true</b> se a soma dos valores do array for maior que 100, ou <b>false</b> caso contrário.',
+      hint: 'Este duelo combina duas coisas que você já resolveu antes: some os valores do array e depois compare o total com 100.',
+      tests: [
+        { args: [[50, 60]], expected: true },
+        { args: [[10, 20]], expected: false },
+        { args: [[100, 1]], expected: true },
+        { args: [[]], expected: false }
+      ]
+    }
+  ];
+
+  // Exposto sempre (não só quando o botão local aparece) pra a aba "Gestão"
+  // do portal da turma conseguir chamar isso remotamente, num iframe oculto,
+  // e baixar um .txt com enunciado + critério de avaliação (testes) de cada
+  // duelo — aqui não existe UM código certo, e sim um valor esperado por
+  // combinação de argumentos, então o gabarito lista os casos de teste.
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'JavaScript Intermediário',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        answer: c.tests.map(t => {
+          const inputs = (t.args || []).map(a => JSON.stringify(a)).join(', ');
+          const exp = ('expected' in t) ? JSON.stringify(t.expected) : (t.expectedLabel || 'ver critério no código-fonte');
+          return `${c.fnName}(${inputs}) deve retornar ${exp}`;
+        }).join('\n')
+      })),
+      fileName: 'js-intermediario-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const enemyAvatarEl = document.getElementById('enemyAvatar');
+  const enemyNameEl = document.getElementById('enemyName');
+  const hpBarFill = document.getElementById('hpBarFill');
+  const codeInput = document.getElementById('codeInput');
+  const btnRun = document.getElementById('btnRun');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '💀' : (unlocked ? '⚔️' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.enemyEmoji} ${c.enemyName}</span>`;
+      if (unlocked) {
+        item.addEventListener('click', () => selectChallenge(c.id));
+      }
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Duelo ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    codeInput.value = challenge.starter;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    enemyAvatarEl.textContent = challenge.enemyEmoji;
+    enemyNameEl.textContent = challenge.enemyName;
+    const alreadyDefeated = completed.has(id);
+    hpBarFill.classList.toggle('defeated', alreadyDefeated);
+
+    clearConsole();
+    if (alreadyDefeated) {
+      logConsole(`Você já derrotou ${challenge.enemyName}. Pode reviver o duelo para treinar.`, 'info');
+    }
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'js_intermediario',
+        `JavaScript Intermediário — Duelo ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  function clearConsole() {
+    consoleOutput.innerHTML = '';
+  }
+
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function deepEqual(a, b) {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
+    }
+    return a === b;
+  }
+
+  function runChallenge() {
+    const challenge = CHALLENGES.find(c => c.id === selectedId);
+    if (!challenge) return;
+    clearConsole();
+
+    let fn;
+    try {
+      fn = new Function(`${codeInput.value}\nreturn typeof ${challenge.fnName} === 'function' ? ${challenge.fnName} : undefined;`)();
+    } catch (err) {
+      logConsole('Erro de sintaxe: ' + err.message, 'fail');
+      return;
+    }
+
+    if (typeof fn !== 'function') {
+      logConsole(`A função '${challenge.fnName}' não foi encontrada. Verifique o nome da função.`, 'fail');
+      return;
+    }
+
+    let allPass = true;
+    challenge.tests.forEach((t, i) => {
+      let result, errorMsg = null;
+      try {
+        result = fn(...t.args);
+      } catch (err) {
+        errorMsg = err.message;
+      }
+
+      let pass;
+      if (errorMsg !== null) {
+        pass = false;
+      } else if (typeof t.check === 'function') {
+        pass = t.check(result, ...t.args);
+      } else {
+        pass = deepEqual(result, t.expected);
+      }
+      if (!pass) allPass = false;
+
+      const argsStr = t.args.map(a => JSON.stringify(a)).join(', ');
+      const expectedStr = t.expectedLabel ? t.expectedLabel : JSON.stringify(t.expected);
+
+      if (pass) {
+        logConsole(`[Ataque ${i + 1}] ${challenge.fnName}(${argsStr}) → ${JSON.stringify(result)} ✅`, 'pass');
+      } else if (errorMsg) {
+        logConsole(`[Ataque ${i + 1}] ${challenge.fnName}(${argsStr}) → Erro: ${errorMsg} ❌`, 'fail');
+      } else {
+        logConsole(`[Ataque ${i + 1}] ${challenge.fnName}(${argsStr}) → ${JSON.stringify(result)} (esperado ${expectedStr}) ❌`, 'fail');
+      }
+    });
+
+    if (allPass) {
+      completed.add(challenge.id);
+      saveCompleted(completed);
+      hpBarFill.classList.add('defeated');
+
+      const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+      if (isLast) {
+        logConsole(`🏆 Você derrotou ${challenge.enemyName}! Todos os adversários foram vencidos — você é o campeão de JavaScript!`, 'success');
+      } else {
+        logConsole(`💀 Você derrotou ${challenge.enemyName}! Próximo duelo liberado.`, 'success');
+        btnNext.style.display = 'inline-block';
+      }
+      renderSidebar();
+
+      if (typeof window.reportActivity === 'function') {
+        window.reportActivity(
+          'js_intermediario',
+          `JavaScript Intermediário — Duelo ${challenge.id}: ${challenge.title} (vencido)`,
+          { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+        );
+      }
+    } else {
+      logConsole('❌ Seu ataque falhou! Ajuste o código e tente de novo.', 'warn');
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+
+  btnRun.addEventListener('click', runChallenge);
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

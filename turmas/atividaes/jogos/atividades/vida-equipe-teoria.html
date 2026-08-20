@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Colaboração e Compromisso em Equipe: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--blue); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .uma-row{ display:flex; align-items:flex-start; gap:12px; }
+  .uma-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(94,200,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--blue-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .uma-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--blue);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble code{ color:var(--gold); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--gold); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--blue); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--gold); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--blue); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--gold); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--blue); border:1px solid var(--blue-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(94,200,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'vida_equipe_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>PROJETO DE VIDA — COLABORAÇÃO E COMPROMISSO EM EQUIPE (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">5</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `vida_equipe_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Oi! Eu sou a <b>Uma</b>, a coruja mentora da PixelForge Studios. Hoje o assunto é <b>trabalho em equipe colaborativo</b> — vamos usar como exemplo um grupo organizando uma <b>game jam</b> comunitária (evento onde várias pessoas criam jogos juntas em pouco tempo). <b>Colaboração e cooperação</b> significam trabalhar junto rumo a um objetivo comum, ajudando os colegas quando precisam, mesmo que cada um tenha uma tarefa diferente.',
+      question: {
+        prompt: 'Num grupo organizando uma game jam, cada pessoa cuida de uma parte diferente (inscrições, local, prêmios), mas todos se ajudam quando alguma parte trava, mesmo sem ser sua responsabilidade direta. Isso é um exemplo de quê?',
+        options: [
+          'Colaboração e cooperação — trabalhar junto rumo a um objetivo comum, ajudando quando precisa',
+          'Cada um trabalhando isoladamente, sem nenhuma relação com o trabalho dos outros',
+          'Definição de papéis, sem nenhuma cooperação ou ajuda mútua envolvida',
+          'Gestão de conflitos, porque houve um problema técnico entre os membros'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Trabalhar em tarefas diferentes mas se ajudar mutuamente rumo ao mesmo objetivo é a essência da colaboração e cooperação.'
+      }
+    },
+    {
+      story: 'Uma equipe funciona melhor com uma boa <b>definição de papéis</b>: cada pessoa assume uma função clara, de acordo com seu talento ou interesse — quem gosta de organizar cuida da logística, quem é bom com pessoas cuida da comunicação. Isso evita que duas pessoas façam a mesma coisa por engano e que outras tarefas fiquem sem ninguém responsável.',
+      question: {
+        prompt: 'Antes de começar a organizar a game jam, o grupo se reúne e decide claramente: "você cuida das inscrições, eu cuido do local, ela cuida dos prêmios" — cada um sabendo exatamente sua responsabilidade. O que isso representa?',
+        options: [
+          'Definição de papéis — cada pessoa assume uma função clara na equipe',
+          'Falta de colaboração, porque cada um ficou trabalhando isolado',
+          'Compromisso com metas, sem nenhuma relação direta com papéis',
+          'Comunicação em equipe, sem nenhuma relação direta com papéis'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Decidir claramente quem faz o quê, de acordo com o talento de cada um, é justamente definição de papéis.'
+      }
+    },
+    {
+      story: 'Uma equipe também precisa de <b>compromisso com objetivos e metas</b> compartilhadas: todo mundo sabe qual é o resultado final esperado e se compromete a fazer sua parte pra chegar lá, mesmo quando a tarefa fica chata ou cansativa no meio do caminho.',
+      question: {
+        prompt: 'No meio da organização da game jam, uma das tarefas fica bem repetitiva e cansativa, mas a pessoa responsável continua fazendo, porque sabe que o evento todo depende dela cumprir sua parte. Isso ilustra qual conceito?',
+        options: [
+          'Compromisso com objetivos e metas compartilhadas',
+          'Definição de papéis, sem relação direta com compromisso',
+          'Comunicação em equipe, sem relação direta com metas',
+          'Falta de motivação da pessoa responsável pela tarefa'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! Continuar cumprindo sua parte mesmo quando cansa, porque o objetivo comum depende disso, é compromisso com metas compartilhadas.'
+      }
+    },
+    {
+      story: 'Sem <b>comunicação em equipe</b> constante, mesmo papéis bem definidos e metas claras podem falhar: é preciso manter todo mundo informado sobre o progresso — o que já foi feito, o que está travado, o que ainda falta. Silêncio prolongado numa equipe costuma significar que algo não está indo bem.',
+      question: {
+        prompt: 'Uma pessoa do grupo percebe que vai atrasar na entrega da sua parte da game jam e avisa o grupo com antecedência, explicando o motivo, em vez de simplesmente sumir até o prazo estourar. Isso ilustra qual conceito?',
+        options: [
+          'Comunicação em equipe — manter todos informados sobre o progresso, inclusive atrasos',
+          'Falta de compromisso, porque ela já sabia de antemão que ia atrasar a entrega',
+          'Definição de papéis dentro do grupo, sem relação direta com comunicação',
+          'Colaboração comum entre os membros, mas sem relação direta com comunicação'
+        ],
+        correctIndex: 0,
+        explanation: 'Perfeito! Avisar com antecedência sobre um atraso, em vez de sumir, é exatamente boa comunicação em equipe.'
+      }
+    },
+    {
+      story: 'Por fim, tudo isso se junta na <b>integração do trabalho colaborativo</b>: as partes individuais de cada membro (inscrições, local, prêmios, comunicação) precisam se encaixar num resultado único e coeso no final — um evento que parece ter sido pensado como um todo, não como pedaços soltos feitos por pessoas diferentes. Agora você já reconhece colaboração, definição de papéis, compromisso com metas, comunicação em equipe e integração do trabalho colaborativo!',
+      question: {
+        prompt: 'No dia da game jam, as inscrições, o local, os prêmios e a comunicação com os participantes funcionam de forma alinhada, como se tivessem sido pensados por uma única pessoa, mesmo tendo sido feitos por gente diferente. O que isso representa?',
+        options: [
+          'Integração do trabalho colaborativo — as partes individuais se encaixando num resultado coeso',
+          'Sorte, sem nenhuma relação real com o trabalho da equipe organizadora',
+          'Falta de definição de papéis dentro do grupo organizador do evento',
+          'Um conflito bem resolvido, sem relação direta com integração do trabalho'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Quando as partes de cada pessoa se encaixam num resultado único e coerente, isso é integração do trabalho colaborativo.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Projeto de Vida — Colaboração e Compromisso em Equipe',
+      subtitle: 'Aula Teórica · Trilha Colaboração e Compromisso em Equipe · Turma Jogos Digitais',
+      capacidade: 'Reconhecer as características do trabalho em equipe de forma colaborativa.',
+      steps: STEPS,
+      fileName: 'vida-equipe-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central do Projeto de Vida: Colaboração em Equipe" no Portal de Aulas para os alunos resolverem os pareceres de verdade.'
+    });
+  };
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Projeto de Vida — Colaboração e Compromisso em Equipe',
+      subtitle: 'Aula Teórica · Trilha Colaboração e Compromisso em Equipe · Turma Jogos Digitais',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'vida-equipe-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('vida_equipe_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Projeto de Vida — Colaboração em Equipe — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'uma-row';
+    row.innerHTML = `
+      <div class="uma-avatar">🦉</div>
+      <div class="speech-bubble">
+        <span class="uma-name">Uma, a Coruja Mentora</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Projeto de Vida — Colaboração em Equipe — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Projeto de Vida — Colaboração em Equipe — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Colaboração e Compromisso em Equipe concluídos!</h2>
+        <p>Você já reconhece colaboração, definição clara de papéis, compromisso com metas compartilhadas, comunicação em equipe e a integração do trabalho de todos num resultado coeso.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra o módulo de prática da Central do Projeto de Vida.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

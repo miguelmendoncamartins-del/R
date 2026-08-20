@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Jogos: Central do Mundo do Trabalho</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--blue); color:var(--blue); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,59,48,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(94,200,255,0.15); color:var(--blue); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--blue); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--gold); }
+
+  .explanation-box{
+    background:#060810; border:1px solid var(--blue-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--blue); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--gold); }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--gold); border:1px solid var(--blue-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(224,184,74,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--gold);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--gold); }
+
+  .options-panel{ background:var(--panel); border:1px solid var(--line); padding:10px 14px; flex-shrink:0; }
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); opacity:0.6; cursor:not-allowed; }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .console{
+    background:#050710; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--blue); font-weight:bold; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'mundo_revolucao_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JOGOS — CENTRAL DO MUNDO DO TRABALHO (REVOLUÇÕES INDUSTRIAIS)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Pareceres</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🤖</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <div class="options-panel" id="optionsPanel"></div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo parecer →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `mundo_revolucao_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Tear a vapor',
+      icon: '⚙️',
+      explanation: 'A 1ª Revolução Industrial (final do século 18) é marcada pela máquina a vapor substituindo o trabalho manual/animal e pelo êxodo rural em direção às fábricas.',
+      desc: 'Uma oficina de tecelagem troca teares manuais por teares movidos a máquina a vapor, e os artesãos se mudam pra perto da fábrica pra trabalhar nela. Qual revolução industrial esse cenário representa?',
+      hint: 'Pense na fonte de energia: vapor é a marca da primeira onda de industrialização.',
+      options: ['1ª Revolução Industrial', '2ª Revolução Industrial', '3ª Revolução Industrial', '4ª Revolução Industrial (Indústria 4.0)'],
+      correctIndex: 0
+    },
+    {
+      id: 2,
+      title: 'Linha de montagem elétrica',
+      icon: '🔌',
+      explanation: 'A 2ª Revolução Industrial trouxe a eletricidade e a linha de montagem, com produção em massa e cada operário repetindo uma etapa específica do processo.',
+      desc: 'Uma fábrica de automóveis do início do século 20 organiza a produção em uma linha de montagem elétrica, onde cada operário repete sempre a mesma etapa. Que revolução é essa?',
+      hint: 'A energia elétrica e a produção em massa entram em cena aqui, não mais só o vapor.',
+      options: ['2ª Revolução Industrial', '1ª Revolução Industrial', '3ª Revolução Industrial', '4ª Revolução Industrial (Indústria 4.0)'],
+      correctIndex: 0
+    },
+    {
+      id: 3,
+      title: 'Robôs programáveis, mas isolados',
+      icon: '💾',
+      explanation: 'A 3ª Revolução Industrial trouxe a eletrônica e os computadores automatizando máquinas, mas ainda sem elas trocarem dados entre si em rede.',
+      desc: 'Uma fábrica passa a controlar máquinas por computadores e circuitos programáveis, reduzindo o trabalho manual — mas essas máquinas ainda não trocam dados entre si pela internet. Que revolução é essa?',
+      hint: 'Tem computador e automação aqui, mas ainda falta a peça da "conexão em rede em tempo real".',
+      options: ['3ª Revolução Industrial', '2ª Revolução Industrial', '1ª Revolução Industrial', '4ª Revolução Industrial (Indústria 4.0)'],
+      correctIndex: 0
+    },
+    {
+      id: 4,
+      title: 'Fábrica conectada',
+      icon: '📡',
+      explanation: 'A 4ª Revolução Industrial (Indústria 4.0) conecta máquinas entre si e à internet em tempo real, formando sistemas ciber-físicos que ajustam a produção sozinhos.',
+      desc: 'Sensores instalados em máquinas de uma fábrica enviam dados em tempo real pela internet, e o sistema ajusta sozinho a produção com base nesses dados. Que revolução industrial é essa?',
+      hint: 'Máquinas "conversando" entre si pela internet em tempo real é a marca registrada dessa revolução.',
+      options: ['4ª Revolução Industrial (Indústria 4.0)', '3ª Revolução Industrial', '2ª Revolução Industrial', '1ª Revolução Industrial'],
+      correctIndex: 0
+    },
+    {
+      id: 5,
+      title: 'Prevendo a quebra antes que aconteça',
+      icon: '📊',
+      explanation: 'Big Data é a tecnologia habilitadora da Indústria 4.0 usada pra analisar grandes volumes de dados históricos e prever eventos futuros, como a falha de uma peça.',
+      desc: 'Uma empresa analisa anos de histórico de sensores de uma máquina pra prever, com antecedência, quando uma peça provavelmente vai falhar. Qual tecnologia habilitadora da Indústria 4.0 está sendo usada aqui?',
+      hint: 'Não é sobre imprimir peças nem sobre robôs — é sobre analisar um grande volume de dados históricos.',
+      options: ['Big Data', 'Manufatura aditiva (impressão 3D)', 'Segurança digital', 'Robótica colaborativa'],
+      correctIndex: 0
+    },
+    {
+      id: 6,
+      title: 'Estufa conectada',
+      icon: '🌱',
+      explanation: 'Sensores coletando dados em tempo real (IoT) e enviando pra um servidor remoto acessível de qualquer lugar (nuvem) formam a dupla clássica dessas tecnologias habilitadoras.',
+      desc: 'Uma estufa agrícola tem sensores de temperatura e umidade que enviam dados a cada minuto pra um servidor remoto, permitindo ao produtor acompanhar tudo pelo celular de qualquer lugar. Que dupla de tecnologias habilitadoras está em ação?',
+      hint: 'Pense em duas peças: quem coleta o dado no campo, e onde esse dado é guardado/processado remotamente.',
+      options: ['IoT e nuvem', 'Manufatura aditiva e robótica colaborativa', 'Big Data e segurança digital', 'Integração de sistemas, sem sensores envolvidos'],
+      correctIndex: 0
+    },
+    {
+      id: 7,
+      title: 'Peça impressa sob demanda',
+      icon: '🖨️',
+      explanation: 'Fabricar uma peça sob demanda, sem molde industrial pronto, é o uso clássico da manufatura digital/aditiva, como a impressão 3D.',
+      desc: 'Uma fábrica precisa de uma peça de reposição rara que não é mais produzida em série, então imprime a peça sob demanda numa impressora 3D industrial. Qual tecnologia habilitadora está sendo usada?',
+      hint: 'Não é sobre robôs nem sobre dados — é sobre fabricar algo físico sob demanda, sem molde pronto.',
+      options: ['Manufatura digital/aditiva', 'Big Data', 'Integração de sistemas', 'Segurança digital'],
+      correctIndex: 0
+    },
+    {
+      id: 8,
+      title: 'Login em duas etapas na fábrica',
+      icon: '🔐',
+      explanation: 'Autenticação forte e criptografia de dados são medidas centrais de segurança digital, essenciais numa fábrica com muitos sistemas conectados.',
+      desc: 'Uma fábrica conectada exige autenticação em duas etapas pra acessar o painel de controle das máquinas e criptografa os dados entre sensores e servidor. Que tecnologia habilitadora é essa?',
+      hint: 'Pense em proteção contra invasões e acessos indevidos, não em produção física.',
+      options: ['Segurança digital', 'Manufatura aditiva', 'Robótica colaborativa', 'Big Data'],
+      correctIndex: 0
+    },
+    {
+      id: 9,
+      title: 'Estoque avisando a produção sozinho',
+      icon: '🔗',
+      explanation: 'Sistemas diferentes trocando dados automaticamente entre si, sem intervenção manual, é exatamente integração de sistemas.',
+      desc: 'O sistema de estoque de uma fábrica avisa automaticamente o sistema de produção quando a matéria-prima está acabando, sem nenhum funcionário copiando essa informação manualmente. Que tecnologia habilitadora é essa?',
+      hint: 'Pense em dois sistemas "conversando" entre si sozinhos, sem planilha copiada na mão.',
+      options: ['Integração de sistemas', 'Manufatura aditiva', 'Robótica colaborativa', 'Nuvem e IoT isoladamente'],
+      correctIndex: 0
+    },
+    {
+      id: 10,
+      title: 'Do botão ao painel digital',
+      icon: '📈',
+      explanation: 'A Indústria 4.0 exige aprendizado contínuo de competências digitais — a necessidade de se atualizar sempre, não só trocar de ferramenta uma vez.',
+      desc: 'Um operário que antes só apertava botões numa linha de montagem agora precisa aprender a interpretar dados de um painel digital e ajustar parâmetros num sistema conectado. Que impacto da Indústria 4.0 no desenvolvimento do indivíduo é esse?',
+      hint: 'Pense no que muda pra ELE, não pra fábrica: que tipo de aprendizado passa a ser necessário?',
+      options: ['Necessidade de desenvolver competências digitais continuamente', 'Fim total do trabalho humano nas fábricas', 'Nenhum impacto real no trabalho dele', 'Obrigação de trocar de profissão completamente'],
+      correctIndex: 0
+    }
+  ];
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos: Central do Mundo do Trabalho — Revoluções Industriais',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        options: c.options,
+        correctIndex: c.correctIndex,
+        answer: c.options[c.correctIndex]
+      })),
+      fileName: 'mundo-revolucao-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const optionsPanel = document.getElementById('optionsPanel');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🤖' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function renderOptions(challenge, alreadyDone) {
+    optionsPanel.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D'];
+    const wrongTried = new Set();
+
+    const order = challenge.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(challenge.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = challenge.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      if (alreadyDone) {
+        opt.classList.add('disabled');
+        if (pos === correctPos) opt.classList.add('correct');
+      } else {
+        opt.addEventListener('click', () => handleAnswer(challenge, pos, opt));
+      }
+      optionsPanel.appendChild(opt);
+    });
+
+    function handleAnswer(challenge, idx, opt) {
+      if (idx === correctPos) {
+        optionsPanel.querySelectorAll('.option').forEach(el => el.classList.add('disabled'));
+        opt.classList.add('correct');
+
+        completed.add(challenge.id);
+        saveCompleted(completed);
+        ticketStatusEl.textContent = 'RESOLVIDO';
+        ticketStatusEl.classList.add('done');
+        ticketStatusEl.classList.remove('pending');
+
+        const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+        if (isLast) {
+          logConsole('🏆 Parecer emitido! Você concluiu todos os pareceres de revoluções industriais!', 'success');
+        } else {
+          logConsole('✅ Parecer emitido! Próximo parecer liberado.', 'success');
+          btnNext.style.display = 'inline-block';
+        }
+        renderSidebar();
+
+        if (typeof window.reportActivity === 'function') {
+          window.reportActivity(
+            'mundo_revolucao_pratica',
+            `Jogos — Revoluções Industriais — Parecer ${challenge.id}: ${challenge.title} (resolvido)`,
+            { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+          );
+        }
+      } else {
+        wrongTried.add(idx);
+        opt.classList.add('incorrect');
+        logConsole('❌ Não é essa. Tente outra opção — a dica pode ajudar.', 'fail');
+      }
+    }
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Parecer ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) logConsole('Você já emitiu este parecer. Pode revisar as opções.', 'info');
+    renderOptions(challenge, alreadyDone);
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'mundo_revolucao_pratica',
+        `Jogos — Revoluções Industriais — Parecer ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

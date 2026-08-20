@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Inovação e Resolução de Problemas: Teoria</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .progress-track{ height:5px; background:var(--panel2); border-bottom:1px solid var(--line); flex-shrink:0; }
+  .progress-fill{ height:100%; background:var(--blue); width:0%; transition:width 0.4s ease; }
+
+  .stage{ flex:1; min-height:0; padding:18px; overflow-y:auto; display:flex; justify-content:center; }
+  .story-wrap{ width:100%; max-width:620px; display:flex; flex-direction:column; gap:14px; }
+
+  .bit-row{ display:flex; align-items:flex-start; gap:12px; }
+  .bit-avatar{
+    font-size:44px; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(94,200,255,0.5));
+  }
+  .speech-bubble{
+    background:var(--panel); border:1px solid var(--blue-dim); padding:16px 18px;
+    font-size:14px; line-height:1.7; position:relative;
+  }
+  .speech-bubble .bit-name{
+    display:block; font-family:var(--user-font-display, 'VT323', monospace); font-size:18px; color:var(--blue);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .speech-bubble code{ color:var(--gold); }
+
+  .card{ background:var(--panel); border:1px solid var(--line); padding:16px 18px; }
+  .card h2{
+    font-family:var(--user-font-display, 'VT323', monospace); font-size:20px; color:var(--gold); margin:0 0 12px; letter-spacing:1px;
+  }
+
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .feedback{
+    margin-top:12px; padding:12px 14px; font-size:12.5px; line-height:1.6; border:1px dashed var(--line);
+  }
+  .feedback.correct{ border-color:var(--blue); color:var(--ink); }
+  .feedback.incorrect{ border-color:var(--blood-bright); color:var(--ink); }
+  .feedback b{ color:var(--gold); }
+
+  .actions{ display:flex; justify-content:flex-end; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11.5px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:10px 20px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .finish-screen{ text-align:center; }
+  .finish-screen .trophy{ font-size:56px; margin-bottom:10px; }
+  .finish-screen h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:26px; color:var(--blue); margin:0 0 10px; }
+  .finish-screen p{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 6px; }
+  .finish-screen .score{ font-size:20px; color:var(--gold); font-weight:800; margin:14px 0; }
+
+  .btn-topbar{
+    font-family:inherit; font-size:10px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--blue); border:1px solid var(--blue-dim); padding:5px 10px;
+    cursor:pointer; border-radius:2px;
+  }
+  .btn-topbar:hover{ background:rgba(94,200,255,0.1); }
+  .btn-topbar:disabled{ opacity:0.5; cursor:wait; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:10px; }
+    .speech-bubble{ padding:12px 14px; }
+    .card{ padding:12px 14px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'mundo_inovacao_teoria';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/vendor/pptxgen.bundle.js"></script>
+<script src="../../../shared/slides-generator.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>JOGOS — INOVAÇÃO E RESOLUÇÃO DE PROBLEMAS (TEORIA)</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnGenSlides" class="btn-topbar" style="display:none;">🖨️ Gerar Slides (PPTX)</button>
+      <span>ETAPA <span id="lblStepNum">1</span> DE <span id="lblStepTotal">5</span></span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="stage">
+    <div class="story-wrap" id="storyWrap"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `mundo_inovacao_teoria_progress_${username}`;
+
+  const STEPS = [
+    {
+      story: 'Oi, de novo! Eu sou o <b>Bit</b>, assistente de indústria 4.0 da PixelForge Studios. Vamos falar de <b>inovação</b>: inovar não é só "fazer diferente" — é criar ou melhorar algo de um jeito que gere <b>valor real</b>, resolvendo um problema de verdade. Trocar de ferramenta só porque ela é "mais nova", sem resolver problema nenhum, não é inovação — é só mudança por mudança. E toda decisão de inovar passa por <b>pensamento crítico</b>: questionar suposições e avaliar evidências antes de aceitar uma ideia como boa.',
+      question: {
+        prompt: 'A equipe de um estúdio troca o motor gráfico do jogo só porque "é mais novo e todo mundo tá usando", sem que isso resolva nenhum problema real do projeto. Isso é um exemplo de inovação de verdade?',
+        options: [
+          'Não — mudar algo sem resolver um problema real ou gerar valor não é inovação, é só mudança por mudança',
+          'Sim — qualquer mudança de ferramenta já conta como inovação, mesmo sem resolver nenhum problema real',
+          'Sim, porque ferramentas mais novas são sempre melhores que as antigas, independente do contexto',
+          'Não dá pra saber se é inovação sem antes perguntar diretamente pro cliente o que ele prefere'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Inovação exige gerar valor real resolvendo um problema — trocar de ferramenta sem motivo é só mudança, não inovação.'
+      }
+    },
+    {
+      story: '<b>Melhoria contínua</b> é inovação em pequenas doses, aplicada aos <b>processos de trabalho</b>: em vez de esperar um grande salto, a equipe revisa constantemente como trabalha e ajusta pequenos pontos toda semana — o fluxo de testes, a forma de revisar código, a comunicação entre times. Com o tempo, esses ajustes pequenos somam um processo bem mais eficiente.',
+      question: {
+        prompt: 'Toda sexta-feira, a equipe de um estúdio se reúne por 15 minutos só pra revisar o que travou durante a semana e ajustar um pequeno ponto do fluxo de trabalho. Isso é um exemplo de qual conceito?',
+        options: [
+          'Melhoria contínua — pequenos ajustes constantes no processo de trabalho',
+          'Inovação disruptiva — uma mudança radical e única, aplicada de uma vez só no processo',
+          'Gestão de conflitos entre a equipe, resolvendo divergências sobre como o trabalho é feito',
+          'Um processo interno qualquer, sem nenhuma relação real com inovação ou melhoria'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Pequenos ajustes recorrentes no processo, em vez de uma mudança radical de uma vez, são a essência da melhoria contínua.'
+      }
+    },
+    {
+      story: 'Resolver problemas do dia a dia (não só no código!) usa a mesma lógica que vimos antes: <b>raciocínio indutivo</b> (observar vários casos e chegar numa regra geral) e <b>dedutivo</b> (partir de uma regra geral pra explicar um caso específico). A <b>criatividade</b> entra quando você combina esse raciocínio com <b>pesquisa</b> — buscar referências e exemplos antes de decidir o caminho.',
+      question: {
+        prompt: 'Uma pessoa percebe que, nos últimos meses, todo dia que chove forte de manhã o ônibus dela atrasa mais de 20 minutos — e passa a sair mais cedo de casa nesses dias com base nessa observação repetida. Que tipo de raciocínio ela está aplicando?',
+        options: [
+          'Raciocínio indutivo — várias observações particulares levaram a uma regra geral',
+          'Raciocínio dedutivo — uma regra geral foi aplicada a um caso específico',
+          'Nenhum raciocínio lógico estruturado — foi só coincidência ela ter reparado nisso',
+          'Raciocínio hipotético-dedutivo, porque ela testou uma hipótese em laboratório'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Observar vários casos repetidos (chuva forte → atraso) e chegar numa regra geral é justamente raciocínio indutivo, aplicado a um problema do cotidiano.'
+      }
+    },
+    {
+      story: 'A <b>lógica de programação</b> também vira ferramenta de criatividade fora da tela: com uma placa <b>Arduino</b>, por exemplo, dá pra programar sensores e atuadores pra resolver problemas físicos do dia a dia — como um protótipo que liga uma luz automaticamente quando detecta pouca luminosidade no ambiente. É a mesma lógica de condicionais e loops usada em jogos, só que aplicada a um circuito real.',
+      question: {
+        prompt: 'Um grupo programa uma placa Arduino com um sensor de luminosidade: "se estiver escuro, ligue o LED; senão, mantenha apagado". Que tipo de raciocínio de programação está sendo aplicado nesse projeto físico criativo?',
+        options: [
+          'Lógica condicional aplicada a um projeto físico (hardware) pra resolver um problema real',
+          'Somente estética visual do circuito, sem nenhuma lógica de programação envolvida',
+          'Raciocínio dialético entre duas equipes rivais discutindo qual solução é melhor',
+          'Não é lógica de programação de verdade, porque o resultado não é um jogo digital'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! "Se... senão..." é lógica condicional — a mesma usada em jogos, aqui aplicada de forma criativa a um projeto físico com Arduino.'
+      }
+    },
+    {
+      story: 'Por fim, resolver problemas complexos junta tudo isso: <b>estratégias de resolução de problema</b> (como decomposição), o processo de <b>debugging</b> (encontrar e corrigir erros) e o <b>raciocínio hipotético e inferencial</b> — formular hipóteses, testar e inferir conclusões a partir das evidências encontradas. Agora você já sabe reconhecer inovação de verdade e aplicar raciocínio lógico e criativo pra resolver problemas do cotidiano!',
+      question: {
+        prompt: 'Um jogo trava só quando o jogador coleta o terceiro item de uma vez. O dev formula a hipótese "o inventário tem um limite de 2 itens simultâneos" e testa forçando a coleta de um quarto item pra confirmar. Que combinação de raciocínio está sendo usada?',
+        options: [
+          'Raciocínio hipotético (formulou uma hipótese testável) e inferencial (concluiu a partir das evidências do teste)',
+          'Só sorte, já que ele não seguiu nenhum raciocínio estruturado pra chegar nessa conclusão',
+          'Raciocínio dedutivo puro, aplicando uma regra já conhecida sem formular hipótese nenhuma',
+          'Apenas raciocínio indutivo, observando vários casos repetidos sem nenhum teste dirigido'
+        ],
+        correctIndex: 0,
+        explanation: 'Perfeito! Formular uma hipótese específica e testá-la de propósito, tirando conclusões das evidências, é raciocínio hipotético e inferencial trabalhando juntos no debugging.'
+      }
+    },
+    {
+      story: 'Voltando ao <b>pensamento crítico</b>: antes de aceitar uma ideia como boa (inovadora ou não), vale questionar as suposições por trás dela e checar se existem evidências reais sustentando aquilo — em vez de aceitar só porque "todo mundo tá fazendo assim" ou porque veio de alguém com cargo alto.',
+      question: {
+        prompt: 'Um gerente propõe adotar uma nova ferramenta "porque uma empresa famosa usa". Antes de aceitar, a equipe pede dados concretos de que essa ferramenta resolveria um problema real do time. Que postura é essa?',
+        options: [
+          'Pensamento crítico — questionar suposições e buscar evidências antes de aceitar',
+          'Resistência à mudança sem nenhum motivo real',
+          'Falta de liderança da equipe diante do gerente',
+          'Melhoria contínua aplicada ao processo de escolha de ferramentas'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Questionar a suposição por trás da proposta e pedir evidências concretas, em vez de aceitar de cara, é pensamento crítico em ação.'
+      }
+    },
+    {
+      story: 'Vimos o raciocínio indutivo (vários casos → regra geral). O <b>raciocínio dedutivo</b> vai no caminho oposto: parte de uma regra geral já conhecida e a aplica a um caso específico pra prever o que vai acontecer, sem precisar observar aquele caso específico antes.',
+      question: {
+        prompt: 'Sabendo que "toda função sem \'return\' devolve undefined em JavaScript" (regra geral já conhecida), um dev prevê, sem nem rodar o código, que uma função nova sem return vai devolver undefined. Que tipo de raciocínio é esse?',
+        options: [
+          'Raciocínio dedutivo — aplicar uma regra geral já conhecida a um caso específico',
+          'Raciocínio indutivo — observar vários casos pra chegar numa regra',
+          'Nenhum raciocínio lógico, só um palpite aleatório',
+          'Raciocínio hipotético, porque ele testou a hipótese rodando o código'
+        ],
+        correctIndex: 0,
+        explanation: 'Exato! Partir de uma regra geral já sabida e aplicá-la a um caso específico, sem precisar testar, é raciocínio dedutivo.'
+      }
+    },
+    {
+      story: '<b>Inovação nos processos de trabalho</b> nem sempre muda o produto final — às vezes muda só COMO o time chega lá. Automatizar uma tarefa manual repetitiva, por exemplo, libera tempo do time pra focar em problemas mais complexos, mesmo sem o jogo em si mudar nada.',
+      question: {
+        prompt: 'Um estúdio cria um script que automatiza o empacotamento do jogo pra teste, tarefa que antes um dev fazia manualmente todo dia. O jogo em si não muda nada — mas o time ganha tempo. Que tipo de inovação é essa?',
+        options: [
+          'Inovação no processo de trabalho, não no produto final',
+          'Não é inovação, porque o jogo em si não mudou',
+          'Melhoria contínua, porque foi um ajuste pequeno e não uma automação',
+          'Gestão de conflitos, já que resolveu uma tarefa chata'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso! Inovar não é só mudar o produto — automatizar um processo de trabalho repetitivo também é inovação, mesmo sem alterar o jogo final.'
+      }
+    },
+    {
+      story: 'Quando um problema parece grande demais, uma estratégia poderosa é a <b>decomposição</b>: quebrar o problema complexo em pedaços menores e mais fáceis de resolver um de cada vez, em vez de tentar atacar tudo de uma vez só.',
+      question: {
+        prompt: 'Em vez de tentar consertar "o jogo todo travando" de uma vez, um dev separa o problema em partes menores — testa o carregamento, depois a física, depois o áudio — até achar exatamente onde trava. Que estratégia de resolução de problema é essa?',
+        options: [
+          'Decomposição — quebrar um problema grande em partes menores',
+          'Raciocínio dedutivo, aplicando uma regra geral já conhecida',
+          'Melhoria contínua, ajustando o processo aos poucos',
+          'Pensamento crítico, questionando a causa raiz sem testar nada'
+        ],
+        correctIndex: 0,
+        explanation: 'Isso mesmo! Quebrar um problema grande em partes menores e testáveis, uma de cada vez, é a estratégia de decomposição.'
+      }
+    },
+    {
+      story: 'Por fim, <b>criatividade</b> de verdade raramente nasce do nada — ela costuma vir de <b>pesquisa</b>: olhar como outros já resolveram problemas parecidos (em outros jogos, áreas, até fora da tecnologia) e combinar essas referências de um jeito novo pro seu próprio contexto.',
+      question: {
+        prompt: 'Antes de criar o sistema de combate do jogo, a equipe pesquisa como outros jogos resolveram esse mesmo desafio e combina ideias de dois deles de um jeito novo, adaptado ao próprio projeto. Isso é um exemplo de quê?',
+        options: [
+          'Criatividade apoiada em pesquisa de referências',
+          'Cópia direta de outro jogo, sem nenhuma criatividade',
+          'Raciocínio dedutivo, aplicando uma regra pronta',
+          'Gestão de conflitos entre referências diferentes'
+        ],
+        correctIndex: 0,
+        explanation: 'Perfeito! Pesquisar referências e combiná-las de um jeito novo pro seu contexto é exatamente criatividade apoiada em pesquisa.'
+      }
+    }
+  ];
+
+  window.generateSlidesForGestao = function () {
+    return window.PortalSlides.generate({
+      title: 'Jogos — Inovação e Resolução de Problemas',
+      subtitle: 'Aula Teórica · Trilha Inovação e Resolução de Problemas · Turma Jogos Digitais',
+      capacidade: 'Reconhecer a inovação como ferramenta de melhoria / Resolver problemas do cotidiano de forma criativa e inovadora.',
+      steps: STEPS,
+      fileName: 'mundo-inovacao-teoria-slides.pptx',
+      closingTitle: 'Hora da prática!',
+      closingText: 'Abra o módulo "Prática — Central do Mundo do Trabalho: Inovação" no Portal de Aulas para os alunos resolverem os pareceres de verdade.'
+    });
+  };
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos — Inovação e Resolução de Problemas',
+      subtitle: 'Aula Teórica · Trilha Inovação e Resolução de Problemas · Turma Jogos Digitais',
+      items: STEPS.map((step, i) => ({
+        number: i + 1,
+        prompt: step.question.prompt,
+        options: step.question.options,
+        correctIndex: step.question.correctIndex,
+        answer: step.question.options[step.question.correctIndex]
+      })),
+      fileName: 'mundo-inovacao-teoria-gabarito.txt'
+    });
+  };
+
+  const role = urlParams.get('role') || 'aluno';
+  const btnGenSlides = document.getElementById('btnGenSlides');
+  if (role === 'professor') {
+    btnGenSlides.style.display = 'inline-block';
+    btnGenSlides.addEventListener('click', () => {
+      btnGenSlides.disabled = true;
+      btnGenSlides.textContent = '⏳ Gerando...';
+      setTimeout(() => {
+        window.generateSlidesForGestao();
+        btnGenSlides.disabled = false;
+        btnGenSlides.textContent = '🖨️ Gerar Slides (PPTX)';
+      }, 50);
+    });
+  }
+
+  const storyWrap = document.getElementById('storyWrap');
+  const lblStepNum = document.getElementById('lblStepNum');
+  const lblStepTotal = document.getElementById('lblStepTotal');
+  const progressFill = document.getElementById('progressFill');
+
+  lblStepTotal.textContent = STEPS.length;
+
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveProgress(data) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  }
+
+  const ORDER_KEY = PROGRESS_KEY.replace('_progress_', '_order_');
+
+  function shuffleOrder() {
+    const arr = STEPS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function loadOrder() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length === STEPS.length && parsed.every(n => Number.isInteger(n) && n >= 0 && n < STEPS.length)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const saved = loadProgress();
+  let stepOrder = (saved && !saved.completed) ? (loadOrder() || shuffleOrder()) : shuffleOrder();
+  localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+  let currentStepIndex = (saved && !saved.completed) ? Math.min(saved.lastStepIndex || 0, STEPS.length - 1) : 0;
+  let correctCount = (saved && typeof saved.correctCount === 'number') ? saved.correctCount : 0;
+
+  function updateProgressBar() {
+    const pct = Math.round(((currentStepIndex) / STEPS.length) * 100);
+    progressFill.style.width = pct + '%';
+    lblStepNum.textContent = Math.min(currentStepIndex + 1, STEPS.length);
+  }
+
+  function reportStep(label) {
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity('mundo_inovacao_teoria', label, {
+        step: currentStepIndex + 1,
+        total: STEPS.length,
+        correctCount: correctCount
+      });
+    }
+  }
+
+  function renderStory() {
+    updateProgressBar();
+    const step = STEPS[stepOrder[currentStepIndex]];
+    reportStep(`Jogos — Inovação e Resolução de Problemas — Etapa ${currentStepIndex + 1}/${STEPS.length}`);
+
+    storyWrap.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.className = 'bit-row';
+    row.innerHTML = `
+      <div class="bit-avatar">🤖</div>
+      <div class="speech-bubble">
+        <span class="bit-name">Bit, Assistente de Indústria 4.0</span>
+        ${step.story}
+      </div>
+    `;
+    storyWrap.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.innerHTML = `<button class="btn" id="btnNext">Próximo →</button>`;
+    storyWrap.appendChild(actions);
+
+    document.getElementById('btnNext').addEventListener('click', renderQuestion);
+  }
+
+  function renderQuestion() {
+    const step = STEPS[stepOrder[currentStepIndex]];
+    const q = step.question;
+
+    storyWrap.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h2>❓ ${q.prompt}</h2>`;
+
+    const optionsWrap = document.createElement('div');
+    const letters = ['A', 'B', 'C', 'D'];
+    let answered = false;
+
+    const order = q.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(q.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = q.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      opt.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        selectAnswer(pos);
+      });
+      optionsWrap.appendChild(opt);
+
+      function selectAnswer(chosenIdx) {
+        const allOptionEls = optionsWrap.querySelectorAll('.option');
+        allOptionEls.forEach(el => el.classList.add('disabled'));
+
+        const isCorrect = chosenIdx === correctPos;
+        allOptionEls[chosenIdx].classList.add(isCorrect ? 'correct' : 'incorrect');
+        if (!isCorrect) {
+          allOptionEls[correctPos].classList.add('correct');
+        }
+        if (isCorrect) correctCount++;
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+        feedback.innerHTML = isCorrect
+          ? `✅ Correto! ${q.explanation}`
+          : `❌ Não foi dessa vez. A resposta certa é "<b>${q.options[q.correctIndex]}</b>": ${q.explanation.replace(/^(Isso mesmo!|Isso!|Correto!|Exato!|Perfeito!|Correta!)\s*/i, '')}`;
+        card.appendChild(feedback);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.style.marginTop = '14px';
+        actions.innerHTML = `<button class="btn" id="btnNextAfterAnswer">Próximo →</button>`;
+        card.appendChild(actions);
+
+        saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+        reportStep(`Jogos — Inovação e Resolução de Problemas — Etapa ${currentStepIndex + 1}/${STEPS.length} (respondida)`);
+
+        document.getElementById('btnNextAfterAnswer').addEventListener('click', () => {
+          currentStepIndex++;
+          if (currentStepIndex >= STEPS.length) {
+            finishJourney();
+          } else {
+            saveProgress({ lastStepIndex: currentStepIndex, correctCount, completed: false });
+            renderStory();
+          }
+        });
+      }
+    });
+
+    card.appendChild(optionsWrap);
+    storyWrap.innerHTML = '';
+    storyWrap.appendChild(card);
+  }
+
+  function finishJourney(reviewOnly) {
+    const pct = STEPS.length > 0 ? Math.round((correctCount / STEPS.length) * 100) : 0;
+    const passed = reviewOnly ? true : pct >= 80;
+    if (!reviewOnly) {
+      saveProgress({ lastStepIndex: STEPS.length, correctCount, completed: passed });
+      reportStep(`Jogos — Inovação e Resolução de Problemas — ${passed ? 'Concluída' : 'Não concluída'} (${correctCount}/${STEPS.length})`);
+    }
+
+    progressFill.style.width = '100%';
+    lblStepNum.textContent = STEPS.length;
+
+    storyWrap.innerHTML = passed ? `
+      <div class="card finish-screen">
+        <div class="trophy">🏆</div>
+        <h2>Inovação e Resolução de Problemas concluídos!</h2>
+        <p>Você já reconhece o que é inovação de verdade, o papel da melhoria contínua e sabe aplicar raciocínio lógico, criatividade e debugging pra resolver problemas do cotidiano.</p>
+        <div class="score">Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%).</div>
+        <p>Agora é hora de colocar a mão na massa: volte à trilha e abra o módulo de prática da Central do Mundo do Trabalho.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn btn-secondary" id="btnRestart">🔁 Rever a teoria</button>
+        </div>
+      </div>
+    ` : `
+      <div class="card finish-screen">
+        <div class="trophy">📚</div>
+        <h2>Quase lá!</h2>
+        <p>Você acertou ${correctCount} de ${STEPS.length} perguntas (${pct}%) — é preciso pelo menos 80% de acerto para concluir esta atividade.</p>
+        <div class="actions" style="justify-content:center; margin-top:12px;">
+          <button class="btn" id="btnRestart">🔁 Tentar novamente</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      currentStepIndex = 0;
+      correctCount = 0;
+      stepOrder = shuffleOrder();
+      localStorage.setItem(ORDER_KEY, JSON.stringify(stepOrder));
+      saveProgress({ lastStepIndex: 0, correctCount: 0, completed: false });
+      renderStory();
+    });
+  }
+
+  if (saved && saved.completed) {
+    currentStepIndex = STEPS.length;
+    finishJourney(true);
+  } else {
+    renderStory();
+  }
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Jogos: Central de QA (Planejamento de Testes)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;800&display=swap');
+
+  :root{
+    --bg:#0a0d14; --panel:#10141f; --panel2:#0d101a; --line:#20283a;
+    --blue:#5ec8ff; --blue-dim:#2f7aa8; --blood:#c1121f; --blood-bright:#ff3b30;
+    --gold:#e0b84a; --ink:#dbe4f2; --ink-dim:#657388;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:10px; background:var(--bg); color:var(--ink);
+    font-family:var(--user-font, 'JetBrains Mono', monospace); height:100vh; overflow:hidden;
+  }
+
+  .env{
+    width:100%; height:100%; border:2px solid var(--blue-dim); background:#060810;
+    display:flex; flex-direction:column; box-shadow:0 0 15px rgba(94,200,255,0.15);
+  }
+
+  .topbar{
+    height:30px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:var(--ink-dim); text-transform:uppercase; flex-shrink:0;
+  }
+
+  .stage{ flex:1; min-height:0; padding:12px; overflow:hidden; display:flex; }
+  .layout{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:14px; width:100%; height:100%; }
+
+  .sidebar{
+    width:200px; flex-shrink:0; height:100%; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); padding:8px;
+  }
+  .sidebar-title{ font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding:0 2px; }
+  .challenge-item{
+    display:flex; align-items:center; gap:8px; padding:8px 8px; margin-bottom:4px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:11px;
+  }
+  .challenge-item .status{ font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .challenge-item.active{ border-color:var(--blue); color:var(--blue); }
+  .challenge-item.completed{ color:var(--ink); }
+  .challenge-item.locked{ opacity:0.4; cursor:not-allowed; }
+  .challenge-item .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main-panel{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; }
+
+  .challenge-header{ flex-shrink:0; background:var(--panel); border:1px solid var(--line); padding:10px 14px; }
+
+  .ticket-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ticket-icon{ font-size:26px; line-height:1; }
+  .ticket-status{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:2px; }
+  .ticket-status.pending{ background:rgba(255,59,48,0.15); color:var(--blood-bright); }
+  .ticket-status.done{ background:rgba(94,200,255,0.15); color:var(--blue); }
+
+  .challenge-header h2{ font-family:var(--user-font-display, 'VT323', monospace); font-size:19px; color:var(--blue); margin:0 0 8px; letter-spacing:1px; }
+  .challenge-header p{ font-size:12px; color:var(--ink-dim); margin:8px 0 0; line-height:1.5; }
+  .challenge-header code{ color:var(--gold); }
+
+  .explanation-box{
+    background:#060810; border:1px solid var(--blue-dim); padding:10px 12px;
+    font-size:11.5px; color:var(--ink); line-height:1.6;
+  }
+  .explanation-box .exp-title{
+    color:var(--blue); font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;
+  }
+  .explanation-box code{ color:var(--gold); }
+
+  .hint-toggle{
+    display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    background:transparent; color:var(--gold); border:1px solid var(--blue-dim); padding:5px 10px; cursor:pointer; border-radius:2px;
+  }
+  .hint-toggle:hover{ background:rgba(224,184,74,0.1); }
+  .hint-box{
+    display:none; margin-top:8px; background:var(--panel2); border:1px dashed var(--gold);
+    padding:8px 10px; font-size:11.5px; color:var(--ink); line-height:1.5;
+  }
+  .hint-box.show{ display:block; }
+  .hint-box b{ color:var(--gold); }
+
+  .options-panel{ background:var(--panel); border:1px solid var(--line); padding:10px 14px; flex-shrink:0; }
+  .option{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:8px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-size:13px;
+  }
+  .option:hover{ border-color:var(--blue-dim); }
+  .option .opt-letter{
+    width:22px; height:22px; flex-shrink:0; border:1px solid var(--ink-dim); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-dim);
+  }
+  .option.correct{ border-color:var(--blue); background:rgba(94,200,255,0.08); }
+  .option.correct .opt-letter{ border-color:var(--blue); color:var(--blue); }
+  .option.incorrect{ border-color:var(--blood-bright); background:rgba(255,59,48,0.08); opacity:0.6; cursor:not-allowed; }
+  .option.incorrect .opt-letter{ border-color:var(--blood-bright); color:var(--blood-bright); }
+  .option.disabled{ cursor:default; }
+
+  .actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+  button.btn{
+    font-family:inherit; font-weight:800; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--blue); color:#04162a; border:none; padding:9px 16px; cursor:pointer; border-radius:2px;
+  }
+  button.btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.btn-secondary{ background:transparent; color:var(--blue); border:1px solid var(--blue-dim); }
+
+  .console{
+    background:#050710; border:1px solid var(--line); padding:8px 10px; font-size:11px;
+    flex:1; min-height:50px; overflow-y:auto; line-height:1.6;
+  }
+  .console .line.info{ color:var(--ink-dim); }
+  .console .line.fail{ color:var(--blood-bright); }
+  .console .line.success{ color:var(--blue); font-weight:bold; }
+
+  @media (max-width: 700px) {
+    body{ height:auto; min-height:100vh; overflow-y:auto; padding:6px; }
+    .env{ height:auto; min-height:calc(100vh - 12px); border-width:1px; }
+    .stage{ overflow:visible; padding:8px; }
+    .layout{ flex-direction:column; height:auto; }
+    .sidebar{ width:100%; height:auto; max-height:150px; }
+    .main-panel{ height:auto; overflow-y:visible; }
+    .console{ flex:none; max-height:160px; }
+  }
+</style>
+<script>
+  window.ACTIVITY_LOCATION = 'teste_planejamento_pratica';
+</script>
+<script src="../../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../../shared/clipboard-guard.js"></script>
+<script src="../../../shared/activity-tracker.js"></script>
+<script src="../../../shared/progress-sync.js"></script>
+<script src="../../../shared/gabarito-generator.js"></script>
+</head>
+<body>
+
+<div class="env">
+  <div class="topbar">
+    <div>TESTES DE JOGOS — CENTRAL DE QA (PLANEJAMENTO DE TESTES)</div>
+    <div>RESOLVIDOS: <span id="lblProgress">0/0</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Chamados</div>
+        <div id="challengeList"></div>
+      </div>
+
+      <div class="main-panel">
+        <div class="challenge-header">
+          <div class="ticket-row">
+            <div class="ticket-icon" id="ticketIcon">🎫</div>
+            <div class="ticket-status pending" id="ticketStatus">PENDENTE</div>
+          </div>
+          <h2 id="challengeTitle">--</h2>
+
+          <div class="explanation-box">
+            <div class="exp-title">📖 Como funciona</div>
+            <div id="explanationText"></div>
+          </div>
+
+          <p id="challengeDesc"></p>
+
+          <button class="hint-toggle" id="btnHint">💡 Ver dica</button>
+          <div class="hint-box" id="hintBox"></div>
+        </div>
+
+        <div class="options-panel" id="optionsPanel"></div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="btnNext" style="display:none;">Próximo chamado →</button>
+        </div>
+
+        <div class="console" id="consoleOutput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const username = urlParams.get('user') || 'anon';
+  const PROGRESS_KEY = `teste_planejamento_pratica_progress_${username}`;
+
+  const CHALLENGES = [
+    {
+      id: 1,
+      title: 'Testar "o jogo todo"',
+      icon: '🗂️',
+      explanation: 'O escopo diz claramente o que ENTRA numa rodada de testes (e o que fica de fora) — sem ele, o time não sabe onde focar, e sistemas inteiros podem ficar sem atenção nenhuma enquanto outros são retestados à toa.',
+      desc: 'Chamado: um plano de testes chegou pra Zeta dizendo só "testar o jogo". Nenhuma tela, sistema ou funcionalidade específica é mencionada. Qual peça do plano está faltando?',
+      hint: 'Pense: o problema aqui não é COMO testar, nem QUANDO — é sobre delimitar exatamente O QUE entra nesta rodada.',
+      options: [
+        'Escopo — o que exatamente será testado nesta rodada',
+        'Cronograma — quando cada parte será testada',
+        'Teste de mesa — revisão de regras ainda em papel',
+        'Comunicação não violenta — forma de relatar o problema'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 2,
+      title: 'Bug bloqueia ou não?',
+      icon: '🎨',
+      explanation: 'Critérios de aceite são regras combinadas ANTES de testar, que dizem o que precisa ser verdade pra considerar algo aprovado — sem eles, cada bug vira uma discussão de caso a caso.',
+      desc: 'Chamado: um botão do menu apareceu com a cor errada, mas continua funcionando normalmente. A equipe está em polvorosa discutindo se isso trava o lançamento ou não, sem nenhum critério prévio pra decidir. O que faltou combinar de antemão?',
+      hint: 'Pense: o time sabe O QUE testar aqui — o que falta é uma régua clara pra dizer "isso é grave o bastante ou não".',
+      options: [
+        'Critérios de aceite — regras combinadas antes, que dizem o que aprova ou reprova um resultado',
+        'Casos de teste — o passo a passo de como reproduzir o cenário',
+        'Rastreabilidade — o elo entre requisito do GDD e caso de teste',
+        'Priorização — a ordem de execução dos testes'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 3,
+      title: 'Cada um testa de um jeito',
+      icon: '🧭',
+      explanation: 'Um caso de teste bem escrito traz a sequência exata de ações e o resultado esperado em cada passo — sem isso, testadores diferentes reproduzem o mesmo cenário de jeitos diferentes, achando que testaram a mesma coisa.',
+      desc: 'Chamado: o registro diz só "testar a compra de item na loja". Um testador clica direto no item; outro primeiro filtra por categoria antes de clicar — e nenhum dos dois sabe se está fazendo "certo". O que está faltando nesse chamado?',
+      hint: 'Pense: falta uma descrição passo a passo, não uma régua de aprovação nem uma data.',
+      options: [
+        'Um caso de teste com a sequência exata de passos e o resultado esperado em cada um',
+        'Um cronograma, já que os passos do teste já estão bem definidos',
+        'Uma priorização, já que só existe um caso de teste aqui',
+        'Nada — os dois testadores estão testando exatamente a mesma coisa'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 4,
+      title: 'Tudo pronto, ninguém sabe quando',
+      icon: '📅',
+      explanation: 'De nada adianta ter os casos de teste prontos se ninguém sabe quando executar cada bloco nem quem é o dono de cada parte — isso é papel do cronograma e dos responsáveis.',
+      desc: 'Chamado: os casos de teste de uma atualização estão todos escritos e aprovados — mas ninguém sabe até quando isso precisa terminar, nem quem executa cada bloco. O que falta no plano?',
+      hint: 'Pense: os casos de teste já existem — o que falta é decidir QUANDO e QUEM.',
+      options: [
+        'Cronograma e responsáveis',
+        'Escopo, já que já está claro que a atualização inteira será testada',
+        'Casos de teste, apesar de eles já estarem escritos e aprovados',
+        'Critérios de aceite, apesar de a aprovação de cada caso já estar clara'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 5,
+      title: 'Mecânica ainda só no papel',
+      icon: '📋',
+      explanation: 'O teste de mesa revisa regras e design num protótipo simples (papel, planilha), ANTES de existir código — é a forma mais barata de pegar problemas de balanceamento cedo.',
+      desc: 'Chamado: a equipe de design está discutindo uma mecânica nova de combate usando só fichas de papel e uma planilha de números — nenhuma linha de código foi escrita ainda. Que tipo de teste é esse?',
+      hint: 'Pense: o que caracteriza esse teste é justamente NÃO precisar de código rodando ainda.',
+      options: [
+        'Teste de mesa',
+        'Teste de desempenho, medindo o FPS da mecânica em tempo real',
+        'Teste automatizado, rodado direto no motor do jogo',
+        'Não é um teste válido, já que nenhum código existe ainda'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 6,
+      title: 'Faltam 2 horas pro lançamento',
+      icon: '⏱️',
+      explanation: 'Priorizar significa separar o que é crítico (trava o jogo, quebra o save) do que é secundário (um detalhe cosmético) — pra saber o que rodar primeiro quando o tempo é curto.',
+      desc: 'Chamado: existem 50 casos de teste cadastrados, mas faltam só 2 horas pro lançamento e não dá tempo de rodar todos. Ninguém sabe por qual começar. O que resolveria isso?',
+      hint: 'Pense: o problema não é O QUE testar (já está definido) nem COMO — é sobre ORDEM de execução quando o tempo aperta.',
+      options: [
+        'Priorização dos casos de teste, rodando primeiro os críticos',
+        'Um novo escopo, reduzindo o jogo inteiro pela metade',
+        'Um novo teste de mesa, revisando tudo em papel de novo',
+        'Ignorar o prazo e adiar o lançamento sem nenhum critério'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 7,
+      title: 'Requisito sem nenhum teste',
+      icon: '🧵',
+      explanation: 'Rastreabilidade é o fio que liga cada requisito do GDD a pelo menos um caso de teste — sem esse elo, um requisito inteiro pode passar despercebido, mesmo com o plano parecendo completo.',
+      desc: 'Chamado: o GDD exige um sistema de save funcional, mas ao revisar a lista de casos de teste, ninguém encontra nenhum caso que cubra esse requisito. Que problema é esse?',
+      hint: 'Pense: o problema não é a qualidade de um caso de teste — é a ausência total de um elo entre requisito e teste.',
+      options: [
+        'Falta de rastreabilidade entre o requisito do GDD e os casos de teste',
+        'Falta de critérios de aceite, apesar de já existir um caso cobrindo o save',
+        'Falta de teste de mesa, apesar de o save já estar totalmente programado',
+        'Nenhum problema — nem todo requisito do GDD precisa virar caso de teste'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 8,
+      title: '"Fizeram isso errado"',
+      icon: '🗣️',
+      explanation: 'Comunicação não violenta significa descrever o problema observado de forma objetiva, sem apontar culpados — isso mantém o foco em resolver, não em quem errou.',
+      desc: 'Chamado: um relatório de teste descreve um problema assim: "o programador responsável fez essa tela de qualquer jeito, sem cuidado nenhum". O que está errado nesse relatório?',
+      hint: 'Pense: o problema não é o conteúdo técnico relatado — é o TOM usado pra descrever quem "errou".',
+      options: [
+        'Ele julga uma pessoa em vez de descrever o comportamento observado de forma objetiva',
+        'Nada, esse é o formato ideal de relatório de teste',
+        'Ele deveria citar o nome completo da pessoa responsável, pra ficar mais claro',
+        'Relatórios de teste nunca devem mencionar problema nenhum encontrado'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 9,
+      title: 'Plano parado no tempo',
+      icon: '🔄',
+      explanation: 'Um plano de testes precisa acompanhar as mudanças reais do jogo — se ficar parado, passa a testar (ou deixar de testar) coisas que já não refletem o jogo atual.',
+      desc: 'Chamado: o jogo ganhou uma mecânica de combate totalmente nova há 3 meses, mas o plano de testes continua idêntico ao de antes dessa mudança. Qual é o problema?',
+      hint: 'Pense: o plano em si pode ter sido ótimo no passado — o que falhou foi não acompanhar o jogo ao longo do tempo.',
+      options: [
+        'O plano não foi revisado depois da mudança — ele deveria ser atualizado sempre que o jogo muda de verdade',
+        'Nenhum — um plano de testes, uma vez escrito, nunca precisa ser revisado de novo',
+        'O problema é só dos programadores, o plano não tem relação com mudanças de mecânica',
+        'O plano deveria ter sido apagado por completo assim que a mecânica nova entrou'
+      ],
+      correctIndex: 0
+    },
+    {
+      id: 10,
+      title: 'BOSS: Plano pela metade',
+      icon: '🚨',
+      explanation: 'Este chamado combina duas peças que você já viu separadas: sem critérios de aceite, ninguém sabe quando um caso está "aprovado"; sem cronograma e responsáveis, ninguém sabe quando e por quem cada caso será executado.',
+      desc: 'CHAMADO CRÍTICO: um plano já tem escopo definido e casos de teste escritos — mas não diz quando cada caso deve ser considerado aprovado, nem quem executa cada um. Quais DUAS peças estão faltando?',
+      hint: 'Pense nas duas perguntas separadas que ainda não têm resposta aqui: "isso está bom o suficiente?" e "quem faz isso, e até quando?".',
+      options: [
+        'Critérios de aceite E cronograma/responsáveis',
+        'Escopo E casos de teste, apesar de os dois já estarem prontos',
+        'Teste de mesa E priorização, sozinhos, sem mais nada',
+        'Só rastreabilidade — as outras peças já bastam do jeito que estão'
+      ],
+      correctIndex: 0
+    }
+  ];
+
+  window.generateGabaritoForGestao = function () {
+    return window.PortalGabarito.generate({
+      title: 'Jogos: Central de QA — Planejamento de Testes',
+      subtitle: 'Prática · Turma Jogos Digitais',
+      items: CHALLENGES.map((c, i) => ({
+        number: i + 1,
+        title: c.title,
+        prompt: c.desc,
+        options: c.options,
+        correctIndex: c.correctIndex,
+        answer: c.options[c.correctIndex]
+      })),
+      fileName: 'teste-planejamento-pratica-gabarito.txt'
+    });
+  };
+
+  const challengeListEl = document.getElementById('challengeList');
+  const challengeTitleEl = document.getElementById('challengeTitle');
+  const challengeDescEl = document.getElementById('challengeDesc');
+  const explanationTextEl = document.getElementById('explanationText');
+  const ticketIconEl = document.getElementById('ticketIcon');
+  const ticketStatusEl = document.getElementById('ticketStatus');
+  const optionsPanel = document.getElementById('optionsPanel');
+  const btnNext = document.getElementById('btnNext');
+  const btnHint = document.getElementById('btnHint');
+  const hintBox = document.getElementById('hintBox');
+  const consoleOutput = document.getElementById('consoleOutput');
+  const lblProgress = document.getElementById('lblProgress');
+
+  function getCompleted() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function saveCompleted(set) {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set]));
+  }
+
+  let completed = getCompleted();
+  let selectedId = CHALLENGES.find(c => !completed.has(c.id))?.id || CHALLENGES[0].id;
+
+  function isUnlocked(challenge) {
+    const idx = CHALLENGES.findIndex(c => c.id === challenge.id);
+    if (idx === 0) return true;
+    return completed.has(CHALLENGES[idx - 1].id);
+  }
+
+  function renderSidebar() {
+    challengeListEl.innerHTML = '';
+    CHALLENGES.forEach(c => {
+      const unlocked = isUnlocked(c);
+      const isDone = completed.has(c.id);
+      const item = document.createElement('div');
+      item.className = 'challenge-item' + (c.id === selectedId ? ' active' : '') + (isDone ? ' completed' : '') + (!unlocked ? ' locked' : '');
+      const statusIcon = isDone ? '✅' : (unlocked ? '🎫' : '🔒');
+      item.innerHTML = `<span class="status">${statusIcon}</span><span class="name">${c.icon} ${c.title}</span>`;
+      if (unlocked) item.addEventListener('click', () => selectChallenge(c.id));
+      challengeListEl.appendChild(item);
+    });
+    lblProgress.textContent = `${completed.size}/${CHALLENGES.length}`;
+  }
+
+  function clearConsole() { consoleOutput.innerHTML = ''; }
+  function logConsole(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'line ' + (type || 'info');
+    line.textContent = msg;
+    consoleOutput.appendChild(line);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
+  function renderOptions(challenge, alreadyDone) {
+    optionsPanel.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D'];
+    const wrongTried = new Set();
+
+    const order = challenge.options.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const correctPos = order.indexOf(challenge.correctIndex);
+
+    order.forEach((origIdx, pos) => {
+      const optText = challenge.options[origIdx];
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `<span class="opt-letter">${letters[pos]}</span><span>${optText}</span>`;
+      if (alreadyDone) {
+        opt.classList.add('disabled');
+        if (pos === correctPos) opt.classList.add('correct');
+      } else {
+        opt.addEventListener('click', () => handleAnswer(challenge, pos, opt));
+      }
+      optionsPanel.appendChild(opt);
+    });
+
+    function handleAnswer(challenge, idx, opt) {
+      if (idx === correctPos) {
+        optionsPanel.querySelectorAll('.option').forEach(el => el.classList.add('disabled'));
+        opt.classList.add('correct');
+
+        completed.add(challenge.id);
+        saveCompleted(completed);
+        ticketStatusEl.textContent = 'RESOLVIDO';
+        ticketStatusEl.classList.add('done');
+        ticketStatusEl.classList.remove('pending');
+
+        const isLast = CHALLENGES[CHALLENGES.length - 1].id === challenge.id;
+        if (isLast) {
+          logConsole('🏆 Chamado resolvido! Você concluiu todos os chamados de planejamento de testes!', 'success');
+        } else {
+          logConsole('✅ Chamado resolvido! Próximo chamado liberado.', 'success');
+          btnNext.style.display = 'inline-block';
+        }
+        renderSidebar();
+
+        if (typeof window.reportActivity === 'function') {
+          window.reportActivity(
+            'teste_planejamento_pratica',
+            `Testes de Jogos — Planejamento — Chamado ${challenge.id}: ${challenge.title} (resolvido)`,
+            { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+          );
+        }
+      } else {
+        wrongTried.add(idx);
+        opt.classList.add('incorrect');
+        logConsole('❌ Não é essa. Tente outra opção — a dica pode ajudar.', 'fail');
+      }
+    }
+  }
+
+  function selectChallenge(id) {
+    const challenge = CHALLENGES.find(c => c.id === id);
+    if (!challenge || !isUnlocked(challenge)) return;
+    selectedId = id;
+
+    challengeTitleEl.textContent = `Chamado ${challenge.id}: ${challenge.title}`;
+    explanationTextEl.innerHTML = challenge.explanation;
+    challengeDescEl.innerHTML = challenge.desc;
+    btnNext.style.display = 'none';
+
+    hintBox.innerHTML = challenge.hint || '';
+    hintBox.classList.remove('show');
+    btnHint.textContent = '💡 Ver dica';
+
+    ticketIconEl.textContent = challenge.icon;
+    const alreadyDone = completed.has(id);
+    ticketStatusEl.textContent = alreadyDone ? 'RESOLVIDO' : 'PENDENTE';
+    ticketStatusEl.classList.toggle('done', alreadyDone);
+    ticketStatusEl.classList.toggle('pending', !alreadyDone);
+
+    clearConsole();
+    if (alreadyDone) logConsole('Você já resolveu este chamado. Pode revisar as opções.', 'info');
+    renderOptions(challenge, alreadyDone);
+    renderSidebar();
+
+    if (typeof window.reportActivity === 'function') {
+      window.reportActivity(
+        'teste_planejamento_pratica',
+        `Testes de Jogos — Planejamento — Chamado ${challenge.id}: ${challenge.title}`,
+        { challengeId: challenge.id, total: CHALLENGES.length, completed: completed.size }
+      );
+    }
+  }
+
+  btnHint.addEventListener('click', () => {
+    const showing = hintBox.classList.toggle('show');
+    btnHint.textContent = showing ? '💡 Ocultar dica' : '💡 Ver dica';
+  });
+  btnNext.addEventListener('click', () => {
+    const idx = CHALLENGES.findIndex(c => c.id === selectedId);
+    const next = CHALLENGES[idx + 1];
+    if (next) selectChallenge(next.id);
+  });
+
+  renderSidebar();
+  selectChallenge(selectedId);
+</script>
+
+<div vw class="enabled">
+  <div vw-access-button class="active"></div>
+  <div vw-plugin-wrapper>
+    <div class="vw-plugin-top-wrapper"></div>
+  </div>
+</div>
+
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>
+  if (window.VLibras) new window.VLibras.Widget('https://vlibras.gov.br/app');
+</script>
+
+</body>
+</html>

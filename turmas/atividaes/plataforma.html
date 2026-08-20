@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studios — Turma Sistemas</title>
+
+<!-- Tema da turma "Sistemas": só as cores mudam de uma turma para outra.
+     Estrutura, tabs, jogos e painel do professor vivem em shared/.
+     Os nomes das variáveis (--green/--blood) vêm do tema original "hacker";
+     aqui elas só carregam os tons de azul/aço desta turma. -->
+<style>
+  :root{
+    --bg:#070c12; --panel:#0d1620; --panel2:#0a121a; --line:#1c2f40;
+    --green:#3aa0ff; --green-dim:#2b6ba3; --blood:#c1121f; --blood-bright:#ff5b4d;
+    --yellow:#e0c46a; --ink:#d6e2ec; --ink-dim:#6c8698;
+  }
+</style>
+<link rel="stylesheet" href="../../shared/platform-core.css">
+
+<script src="../../shared/users-db.js"></script>
+<script src="../../shared/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../shared/clipboard-guard.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+  window.TURMA_CONFIG = window.TURMA_CONFIG_SISTEMAS;
+</script>
+<script src="../../shared/platform-core.js"></script>
+
+</body>
+</html>
